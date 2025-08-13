@@ -11,14 +11,14 @@ import (
 )
 
 const (
-	PADDING = 2
+	PADDING = 0
 )
 
 type itemDelegate struct{}
 
 func (d itemDelegate) Height() int { return 6 }
 
-func (d itemDelegate) Spacing() int { return 3 }
+func (d itemDelegate) Spacing() int { return 0 }
 
 func (d itemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd { return nil }
 
@@ -61,10 +61,11 @@ func (d tabInterface) View() string {
 }
 
 type Framework struct {
-	name        string
-	description string
-	progress    progress.Model
-	percent     float64
+	name                  string
+	description           string
+	progress              progress.Model
+	expandedDescriptionMD string
+	percent               float64
 }
 
 func (i *Framework) Title() string       { return i.name }

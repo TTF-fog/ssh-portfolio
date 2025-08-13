@@ -77,31 +77,34 @@ func myCustomBubbleteaMiddleware() wish.Middleware {
 			wish.Fatalln(s, "no active terminal, skipping")
 			return nil
 		}
+		cpp_desc, _ := os.ReadFile("descs/cpp_desc.md")
+		go_desc, _ := os.ReadFile("descs/go_desc.md")
 		list_items := []list.Item{
 			&Framework{
-				name:        "Go",
-				description: "Language i learnt recently, which i rely heavily on for app development (what you see is all Go!)",
-				progress:    progress.New(),
-				percent:     70,
+				name:                  "Go",
+				description:           "Language i learnt recently, which i rely heavily on for app development (what you see is all Go!)",
+				expandedDescriptionMD: string(go_desc),
+				progress:              progress.New(),
+				percent:               70,
 			}, &Framework{
-				name:        "C++",
-				description: "One of the languages i have more experience with, used by me primarily for the Arduino platform",
-				progress:    progress.New(),
-				percent:     78,
+				name:                  "C++",
+				description:           "One of the languages i have more experience with, used by me primarily for the Arduino platform",
+				expandedDescriptionMD: string(cpp_desc),
+				progress:              progress.New(),
+				percent:               78,
 			},
 		}
 		m := model{mainPage: mainPage{
 			description: viewport.New(0, 0),
-			frameworks:  list.New(list_items, itemDelegate{}, 0, 0),
 		}, tabs: tabInterface{
 			tabs: []string{"About Me", "My Skills"},
 			idx:  0,
-		},
+		}, mySkills: mySkills{frameworks: list.New(list_items, itemDelegate{}, 0, 0), expandedDescription: viewport.New(0, 0)},
 		}
 		data, _ := os.ReadFile("artichoke.md")
 		m.content = string(data)
-		m.mainPage.frameworks.SetShowTitle(false)
-		m.mainPage.frameworks.SetShowHelp(true)
+		m.mySkills.frameworks.SetShowTitle(false)
+		m.mySkills.frameworks.SetShowHelp(true)
 
 		return newProg(m, append(bubbletea.MakeOptions(s), tea.WithAltScreen())...)
 	}
@@ -110,7 +113,10 @@ func myCustomBubbleteaMiddleware() wish.Middleware {
 
 type mainPage struct {
 	description viewport.Model
-	frameworks  list.Model
+}
+type mySkills struct {
+	frameworks          list.Model
+	expandedDescription viewport.Model
 }
 type model struct {
 	content  string
@@ -118,6 +124,7 @@ type model struct {
 	time     time.Time
 	tabs     tabInterface
 	mainPage mainPage
+	mySkills mySkills
 }
 
 type timeMsg time.Time
@@ -134,17 +141,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if !m.ready {
 			m.mainPage.description.Width = msg.Width / 2
 			m.mainPage.description.Height = msg.Height - 4
+			m.mySkills.expandedDescription.Height = msg.Height - 4
+			m.mySkills.expandedDescription.Width = msg.Width / 6
 			m.ready = true
 		} else {
 			m.mainPage.description.Width = msg.Width - 6
 			m.mainPage.description.Height = msg.Height - 4
+			m.mySkills.expandedDescription.Width = msg.Width - 6
+			m.mySkills.expandedDescription.Height = msg.Height - 30
 		}
 
 		m.mainPage.description.Height = msg.Height - 8
-		m.mainPage.frameworks.SetSize(msg.Width-6, msg.Height-8)
+		m.mySkills.expandedDescription.Height = msg.Height/2 - 8
+		m.mySkills.frameworks.SetSize(msg.Width-6, msg.Height/2-4)
 		renderer, _ := glamour.NewTermRenderer(glamour.WithStandardStyle("dark"), glamour.WithWordWrap(m.mainPage.description.Width))
 		str, _ := renderer.Render(m.content)
 		m.mainPage.description.SetContent(str)
+		m.mySkills.expandedDescription.SetContent("Try pressing enter :)")
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "ctrl+c":
@@ -154,6 +167,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				break
 			}
 			m.tabs.idx += 1
+		case "enter":
+			if m.tabs.tabs[m.tabs.idx] == "My Skills" {
+				renderer, _ := glamour.NewTermRenderer(glamour.WithStandardStyle("dark"), glamour.WithWordWrap(m.mainPage.description.Width))
+				switch item := m.mySkills.frameworks.SelectedItem().(type) {
+				case *Framework:
+					str, _ := renderer.Render(item.expandedDescriptionMD)
+					m.mySkills.expandedDescription.SetContent(str)
+				}
+
+			}
 		case "shift+tab":
 			if m.tabs.idx == 0 {
 				break
@@ -164,15 +187,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
 	m.mainPage.description, cmd = m.mainPage.description.Update(msg)
-	m.mainPage.frameworks, cmd = m.mainPage.frameworks.Update(msg)
+	m.mySkills.frameworks, cmd = m.mySkills.frameworks.Update(msg)
 	cmds = append(cmds, cmd)
-
 	return m, tea.Batch(cmds...)
 }
 func (m model) View() string {
 	docStyle := lipgloss.NewStyle().Padding(1, 2).BorderStyle(lipgloss.NormalBorder())
 	if m.tabs.tabs[m.tabs.idx] == "My Skills" {
-		return lipgloss.JoinVertical(lipgloss.Center, m.tabs.View(), docStyle.Render(m.mainPage.frameworks.View()))
+		return lipgloss.JoinVertical(lipgloss.Center, m.tabs.View(), m.mySkills.frameworks.View(), docStyle.Render(lipgloss.JoinHorizontal(lipgloss.Center, m.mySkills.expandedDescription.View())))
 	}
 	return lipgloss.JoinVertical(lipgloss.Center, m.tabs.View(), docStyle.Copy().AlignHorizontal(lipgloss.Center).Render(m.mainPage.description.View()))
 }
