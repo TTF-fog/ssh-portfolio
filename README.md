@@ -1,0 +1,1 @@
+This is a portfolio for me, served entirely through SSH. There's nothing fancy going on here, as charmbracelet (my goat) not only provides bubbletea (the TUI framewwork i'm using), but also libraries for rendering over SSH and markdown!
