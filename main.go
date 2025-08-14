@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/progress"
-
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -81,19 +80,25 @@ func myCustomBubbleteaMiddleware() wish.Middleware {
 			return nil
 		}
 		lipgloss.SetHasDarkBackground(true)
-		cpp_desc, _ := os.ReadFile("descs/cpp_desc.md")
-		go_desc, _ := os.ReadFile("descs/go_desc.md")
+		var descs map[string]string
+		descs = make(map[string]string)
+		items, _ := os.ReadDir("descs")
+		for _, item := range items {
+			data, _ := os.ReadFile("descs/" + item.Name())
+			descs[item.Name()] = string(data)
+		}
+
 		list_items := []list.Item{
 			&Framework{
 				name:                  "Go",
 				description:           "Language i learnt recently, which i rely heavily on for app development (what you see is all Go!)",
-				expandedDescriptionMD: string(go_desc),
+				expandedDescriptionMD: descs["go_desc.md"],
 				progress:              progress.New(),
 				percent:               70,
 			}, &Framework{
 				name:                  "C++",
 				description:           "One of the languages i have more experience with, used by me primarily for the Arduino platform",
-				expandedDescriptionMD: string(cpp_desc),
+				expandedDescriptionMD: descs["cpp_desc.md"],
 				progress:              progress.New(),
 				percent:               78,
 			},
@@ -247,6 +252,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.contactMe.Dump()
 				return m, nil
 			}
+		case "esc":
+			m.tabs.idx = 0
 		}
 
 	}
@@ -285,7 +292,7 @@ func (m model) View() string {
 		return lipgloss.JoinVertical(lipgloss.Center, m.tabs.View(), m.mySkills.frameworks.View(), docStyle.Render(lipgloss.JoinHorizontal(lipgloss.Center, m.mySkills.expandedDescription.View())))
 	case "Contact Me":
 		render := docStyle.Render(lipgloss.JoinVertical(lipgloss.Center, m.contactMe.name.View(), m.contactMe.email.View(), m.contactMe.content.View()))
-		return lipgloss.JoinVertical(lipgloss.Center, m.tabs.View(), "write me a message here and i'll (probably) get back to you", lipgloss.Place(m.width, m.height-40, lipgloss.Center, lipgloss.Center, render))
+		return lipgloss.JoinVertical(lipgloss.Center, m.tabs.View(), "write me a message here and i'll (probably) get back to you \n press esc to escape and enter to submit", lipgloss.Place(m.width, m.height-40, lipgloss.Center, lipgloss.Center, render))
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Center, m.tabs.View(), docStyle.Copy().AlignHorizontal(lipgloss.Center).Render(m.mainPage.description.View()))
