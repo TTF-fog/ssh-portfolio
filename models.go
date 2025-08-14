@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/progress"
+	"github.com/charmbracelet/bubbles/textarea"
+	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"io"
@@ -14,6 +17,18 @@ const (
 	PADDING = 0
 )
 
+type mainPage struct {
+	description viewport.Model
+}
+type mySkills struct {
+	frameworks          list.Model
+	expandedDescription viewport.Model
+}
+type contactMe struct {
+	name    textinput.Model
+	email   textinput.Model
+	content textarea.Model
+}
 type itemDelegate struct{}
 
 func (d itemDelegate) Height() int { return 6 }

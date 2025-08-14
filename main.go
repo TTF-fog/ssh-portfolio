@@ -5,6 +5,9 @@ import (
 	"errors"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/progress"
+
+	"github.com/charmbracelet/bubbles/textarea"
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
@@ -24,7 +27,7 @@ import (
 
 const (
 	host = "localhost"
-	port = "23841"
+	port = "23849"
 )
 
 func main() {
@@ -77,6 +80,7 @@ func myCustomBubbleteaMiddleware() wish.Middleware {
 			wish.Fatalln(s, "no active terminal, skipping")
 			return nil
 		}
+		lipgloss.SetHasDarkBackground(true)
 		cpp_desc, _ := os.ReadFile("descs/cpp_desc.md")
 		go_desc, _ := os.ReadFile("descs/go_desc.md")
 		list_items := []list.Item{
@@ -97,34 +101,32 @@ func myCustomBubbleteaMiddleware() wish.Middleware {
 		m := model{mainPage: mainPage{
 			description: viewport.New(0, 0),
 		}, tabs: tabInterface{
-			tabs: []string{"About Me", "My Skills"},
+			tabs: []string{"About Me", "My Skills", "Contact Me"},
 			idx:  0,
 		}, mySkills: mySkills{frameworks: list.New(list_items, itemDelegate{}, 0, 0), expandedDescription: viewport.New(0, 0)},
+			contactMe: contactMe{name: textinput.New(), email: textinput.New(), content: textarea.New()},
 		}
+
 		data, _ := os.ReadFile("artichoke.md")
 		m.content = string(data)
 		m.mySkills.frameworks.SetShowTitle(false)
 		m.mySkills.frameworks.SetShowHelp(true)
-
+		m.contactMe.name.Placeholder = "Your Name"
+		m.contactMe.email.Placeholder = "Your Email"
+		m.contactMe.content.Placeholder = "Your Content"
 		return newProg(m, append(bubbletea.MakeOptions(s), tea.WithAltScreen())...)
 	}
-	return bubbletea.MiddlewareWithProgramHandler(teaHandler, termenv.ANSI256)
+	return bubbletea.MiddlewareWithProgramHandler(teaHandler, termenv.TrueColor)
 }
 
-type mainPage struct {
-	description viewport.Model
-}
-type mySkills struct {
-	frameworks          list.Model
-	expandedDescription viewport.Model
-}
 type model struct {
-	content  string
-	ready    bool
-	time     time.Time
-	tabs     tabInterface
-	mainPage mainPage
-	mySkills mySkills
+	content   string
+	ready     bool
+	time      time.Time
+	tabs      tabInterface
+	mainPage  mainPage
+	mySkills  mySkills
+	contactMe contactMe
 }
 
 type timeMsg time.Time
@@ -192,9 +194,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 func (m model) View() string {
-	docStyle := lipgloss.NewStyle().Padding(1, 2).BorderStyle(lipgloss.NormalBorder())
-	if m.tabs.tabs[m.tabs.idx] == "My Skills" {
+	docStyle := lipgloss.NewStyle().Padding(1, 2).BorderStyle(lipgloss.NormalBorder()).Foreground(lipgloss.Color("250"))
+	switch m.tabs.tabs[m.tabs.idx] {
+	case "My Skills":
 		return lipgloss.JoinVertical(lipgloss.Center, m.tabs.View(), m.mySkills.frameworks.View(), docStyle.Render(lipgloss.JoinHorizontal(lipgloss.Center, m.mySkills.expandedDescription.View())))
+	case "Contact Me":
+		return lipgloss.JoinVertical(lipgloss.Center, m.tabs.View(), docStyle.Render(m.contactMe.name.View(), m.contactMe.email.View(), m.contactMe.content.View()))
 	}
+
 	return lipgloss.JoinVertical(lipgloss.Center, m.tabs.View(), docStyle.Copy().AlignHorizontal(lipgloss.Center).Render(m.mainPage.description.View()))
 }

@@ -6,7 +6,10 @@ Simple, and Elegantly Readable
 
 It also handles the typical pains of low-level pretty well (types and pointers), meaning it's easy enough to translate thoughts into code.
 
-> Note: When i say syntax, i mean the style of reading (see: the spiral method)
-> 
+> Note: When i say syntax, i mean the style of reading. C++ can be fairly convoluted which results in the spiral method of reading declarations
+ 
 ## Projects
-[EncryptUI](https://github.com/TTF-fog/EncryptUI)
+[EncryptUI](https://github.com/TTF-fog/EncryptUI) <br>
+[ToDoIt](https://github.com/TTF-fog/ToDoIt) <br>
+[rotatoLang](https://github.com/TTF-fog/rotatoLang) <br>
+[ssh-portfolio](https://github.com/TTF-fog/ssh-portfolio0)
