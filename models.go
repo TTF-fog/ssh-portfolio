@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/progress"
@@ -10,6 +11,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"io"
+	"os"
 	"strings"
 )
 
@@ -29,6 +31,20 @@ type contactMe struct {
 	email   textinput.Model
 	content textarea.Model
 }
+
+func (contact *contactMe) Dump() {
+	var data string
+	data = fmt.Sprintf("Contact Name: %s\nContact Email: %s\n Content: %s\n", contact.name.Value(), contact.email.Value(), insertNth(contact.content.Value(), 40))
+	//TODO: unsanitized paths could cause security vuln, fix
+	err := os.WriteFile("messages/message-"+contact.name.Value(), []byte(data), 0644)
+	if err != nil {
+		panic(err)
+	}
+	contact.name.Reset()
+	contact.email.Reset()
+	contact.content.Reset()
+}
+
 type itemDelegate struct{}
 
 func (d itemDelegate) Height() int { return 6 }
@@ -87,3 +103,16 @@ func (i *Framework) Title() string       { return i.name }
 func (i *Framework) Description() string { return i.description }
 func (i *Framework) FilterValue() string { return i.name }
 func (*Framework) Init() tea.Cmd         { return nil }
+
+func insertNth(s string, n int) string {
+	var buffer bytes.Buffer
+	var n_1 = n - 1
+	var l_1 = len(s) - 1
+	for i, rune := range s {
+		buffer.WriteRune(rune)
+		if i%n == n_1 && i != l_1 {
+			buffer.WriteRune('\n')
+		}
+	}
+	return buffer.String()
+}

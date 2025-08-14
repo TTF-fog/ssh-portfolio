@@ -98,22 +98,30 @@ func myCustomBubbleteaMiddleware() wish.Middleware {
 				percent:               78,
 			},
 		}
+		ti := textinput.New()
+		ti.Placeholder = "Your Name"
+		ti.CharLimit = 156
+		ti.Width = 20
+		t2 := textinput.New()
+		t2.Placeholder = "Your Email"
+		t2.CharLimit = 156
+		t2.Width = 20
+		cont_content := textarea.New()
+		cont_content.Placeholder = "Your Message"
+		cont_content.CharLimit = 156
 		m := model{mainPage: mainPage{
 			description: viewport.New(0, 0),
 		}, tabs: tabInterface{
 			tabs: []string{"About Me", "My Skills", "Contact Me"},
 			idx:  0,
 		}, mySkills: mySkills{frameworks: list.New(list_items, itemDelegate{}, 0, 0), expandedDescription: viewport.New(0, 0)},
-			contactMe: contactMe{name: textinput.New(), email: textinput.New(), content: textarea.New()},
+			contactMe: contactMe{name: ti, email: t2, content: cont_content},
 		}
 
 		data, _ := os.ReadFile("artichoke.md")
 		m.content = string(data)
 		m.mySkills.frameworks.SetShowTitle(false)
 		m.mySkills.frameworks.SetShowHelp(true)
-		m.contactMe.name.Placeholder = "Your Name"
-		m.contactMe.email.Placeholder = "Your Email"
-		m.contactMe.content.Placeholder = "Your Content"
 		return newProg(m, append(bubbletea.MakeOptions(s), tea.WithAltScreen())...)
 	}
 	return bubbletea.MiddlewareWithProgramHandler(teaHandler, termenv.TrueColor)
@@ -122,6 +130,8 @@ func myCustomBubbleteaMiddleware() wish.Middleware {
 type model struct {
 	content   string
 	ready     bool
+	width     int
+	height    int
 	time      time.Time
 	tabs      tabInterface
 	mainPage  mainPage
@@ -136,61 +146,136 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	var cmds []tea.Cmd
+
 	switch msg := msg.(type) {
 	case timeMsg:
 		m.time = time.Time(msg)
+		return m, nil
+
 	case tea.WindowSizeMsg:
 		if !m.ready {
 			m.mainPage.description.Width = msg.Width / 2
 			m.mainPage.description.Height = msg.Height - 4
 			m.mySkills.expandedDescription.Height = msg.Height - 4
 			m.mySkills.expandedDescription.Width = msg.Width / 6
+			m.contactMe.content.SetHeight(msg.Height)
 			m.ready = true
 		} else {
 			m.mainPage.description.Width = msg.Width - 6
 			m.mainPage.description.Height = msg.Height - 4
 			m.mySkills.expandedDescription.Width = msg.Width - 6
 			m.mySkills.expandedDescription.Height = msg.Height - 30
+			m.contactMe.content.SetHeight(msg.Height - 2)
 		}
 
 		m.mainPage.description.Height = msg.Height - 8
 		m.mySkills.expandedDescription.Height = msg.Height/2 - 8
+		m.contactMe.content.SetHeight(msg.Height / 2)
+		m.contactMe.content.SetWidth(msg.Width - 30)
+		m.width = msg.Width
+		m.height = msg.Height
 		m.mySkills.frameworks.SetSize(msg.Width-6, msg.Height/2-4)
 		renderer, _ := glamour.NewTermRenderer(glamour.WithStandardStyle("dark"), glamour.WithWordWrap(m.mainPage.description.Width))
 		str, _ := renderer.Render(m.content)
 		m.mainPage.description.SetContent(str)
 		m.mySkills.expandedDescription.SetContent("Try pressing enter :)")
+		m.mainPage.description, cmd = m.mainPage.description.Update(msg)
+		cmds = append(cmds, cmd)
+		m.mySkills.frameworks, cmd = m.mySkills.frameworks.Update(msg)
+		cmds = append(cmds, cmd)
+		return m, tea.Batch(cmds...)
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return m, tea.Quit
 		case "tab":
-			if m.tabs.idx == len(m.tabs.tabs)-1 {
-				break
-			}
-			m.tabs.idx += 1
-		case "enter":
-			if m.tabs.tabs[m.tabs.idx] == "My Skills" {
-				renderer, _ := glamour.NewTermRenderer(glamour.WithStandardStyle("dark"), glamour.WithWordWrap(m.mainPage.description.Width))
-				switch item := m.mySkills.frameworks.SelectedItem().(type) {
-				case *Framework:
-					str, _ := renderer.Render(item.expandedDescriptionMD)
-					m.mySkills.expandedDescription.SetContent(str)
+			if m.tabs.tabs[m.tabs.idx] == "Contact Me" {
+				if m.contactMe.name.Focused() {
+					m.contactMe.name.Blur()
+					m.contactMe.email.Focus()
+					return m, nil
+				} else if m.contactMe.email.Focused() {
+					m.contactMe.email.Blur()
+					m.contactMe.content.Focus()
+					return m, nil
+				} else if m.contactMe.content.Focused() {
+					m.contactMe.name.Focus()
+					m.contactMe.content.Blur()
+					return m, nil
 				}
-
 			}
+			if m.tabs.idx < len(m.tabs.tabs)-1 {
+				m.tabs.idx++
+				if m.tabs.tabs[m.tabs.idx] == "Contact Me" {
+					m.contactMe.name.Focus()
+				} else {
+					m.contactMe.name.Blur()
+				}
+			}
+			return m, nil
 		case "shift+tab":
-			if m.tabs.idx == 0 {
-				break
+			if m.tabs.tabs[m.tabs.idx] == "Contact Me" {
+				if m.contactMe.name.Focused() {
+					m.contactMe.name.Blur()
+					m.contactMe.content.Focus()
+					return m, nil
+				} else if m.contactMe.email.Focused() {
+					m.contactMe.email.Blur()
+					m.contactMe.name.Focus()
+					return m, nil
+				} else if m.contactMe.content.Focused() {
+					m.contactMe.email.Focus()
+					m.contactMe.content.Blur()
+					return m, nil
+				}
 			}
-			m.tabs.idx -= 1
+			if m.tabs.idx > 0 {
+				m.tabs.idx--
+				if m.tabs.tabs[m.tabs.idx] == "Contact Me" {
+					m.contactMe.name.Focus()
+				} else {
+					m.contactMe.name.Blur()
+				}
+			}
+
+			return m, nil
+		case "enter":
+			if m.tabs.tabs[m.tabs.idx] == "Contact Me" {
+				m.contactMe.Dump()
+				return m, nil
+			}
 		}
+
 	}
-	var cmds []tea.Cmd
-	var cmd tea.Cmd
-	m.mainPage.description, cmd = m.mainPage.description.Update(msg)
-	m.mySkills.frameworks, cmd = m.mySkills.frameworks.Update(msg)
-	cmds = append(cmds, cmd)
+
+	switch m.tabs.tabs[m.tabs.idx] {
+	case "About Me":
+		m.mainPage.description, cmd = m.mainPage.description.Update(msg)
+		cmds = append(cmds, cmd)
+	case "My Skills":
+		if key, ok := msg.(tea.KeyMsg); ok && key.String() == "enter" {
+			renderer, _ := glamour.NewTermRenderer(glamour.WithStandardStyle("dark"), glamour.WithWordWrap(m.mainPage.description.Width))
+			switch item := m.mySkills.frameworks.SelectedItem().(type) {
+			case *Framework:
+				str, _ := renderer.Render(item.expandedDescriptionMD)
+				m.mySkills.expandedDescription.SetContent(str)
+			}
+		} else {
+			m.mySkills.frameworks, cmd = m.mySkills.frameworks.Update(msg)
+			cmds = append(cmds, cmd)
+		}
+	case "Contact Me":
+		m.contactMe.name, cmd = m.contactMe.name.Update(msg)
+		cmds = append(cmds, cmd)
+		m.contactMe.email, cmd = m.contactMe.email.Update(msg)
+		cmds = append(cmds, cmd)
+		m.contactMe.content, cmd = m.contactMe.content.Update(msg)
+		cmds = append(cmds, cmd)
+	}
+
 	return m, tea.Batch(cmds...)
 }
 func (m model) View() string {
@@ -199,7 +284,8 @@ func (m model) View() string {
 	case "My Skills":
 		return lipgloss.JoinVertical(lipgloss.Center, m.tabs.View(), m.mySkills.frameworks.View(), docStyle.Render(lipgloss.JoinHorizontal(lipgloss.Center, m.mySkills.expandedDescription.View())))
 	case "Contact Me":
-		return lipgloss.JoinVertical(lipgloss.Center, m.tabs.View(), docStyle.Render(m.contactMe.name.View(), m.contactMe.email.View(), m.contactMe.content.View()))
+		render := docStyle.Render(lipgloss.JoinVertical(lipgloss.Center, m.contactMe.name.View(), m.contactMe.email.View(), m.contactMe.content.View()))
+		return lipgloss.JoinVertical(lipgloss.Center, m.tabs.View(), "write me a message here and i'll (probably) get back to you", lipgloss.Place(m.width, m.height-40, lipgloss.Center, lipgloss.Center, render))
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Center, m.tabs.View(), docStyle.Copy().AlignHorizontal(lipgloss.Center).Render(m.mainPage.description.View()))
