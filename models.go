@@ -66,7 +66,8 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 					Render("> " + strings.Join(s, "\n "))
 			}
 		}
-		str := fmt.Sprintf("%s \n %s ... \n %s", item.Title(), item.description, item.progress.ViewAs(item.percent))
+		println(item.Percent)
+		str := fmt.Sprintf("%s \n %s ... \n %s", item.Title(), item.Desc, item.progress.ViewAs(item.Percent))
 		fmt.Fprint(w, fn(str))
 	}
 
@@ -92,16 +93,16 @@ func (d tabInterface) View() string {
 }
 
 type Framework struct {
-	name                  string
-	description           string
+	Name                  string `json:"Name,omitempty"`
+	Desc                  string `json:"Desc,omitempty"`
 	progress              progress.Model
-	expandedDescriptionMD string
-	percent               float64
+	ExpandedDescriptionMD string  `json:"ExpandedDescriptionMD,omitempty"`
+	Percent               float64 `json:"Percent,omitempty"`
 }
 
-func (i *Framework) Title() string       { return i.name }
-func (i *Framework) Description() string { return i.description }
-func (i *Framework) FilterValue() string { return i.name }
+func (i *Framework) Title() string       { return i.Name }
+func (i *Framework) Description() string { return i.Desc }
+func (i *Framework) FilterValue() string { return i.Name }
 func (*Framework) Init() tea.Cmd         { return nil }
 
 func insertNth(s string, n int) string {
