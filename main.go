@@ -28,16 +28,35 @@ import (
 )
 
 const (
-	host = "0.0.0.0"
-	port = "23849"
+	HOST = "0.0.0.0"
+	PORT = "23849"
 )
 
+var uptime time.Time
+var v_count int
+
 func main() {
+	var port string
+	var host string
+	port = PORT
+	host = HOST
+	key, found := os.LookupEnv("PORT")
+
+	if found {
+		port = key
+	}
+	key, found = os.LookupEnv("HOST")
+	if found {
+		host = key
+	}
+
+	uptime = time.Now().Truncate(time.Second)
 	s, err := wish.NewServer(
 		wish.WithAddress(net.JoinHostPort(host, port)),
 		wish.WithHostKeyPath(".ssh/id_ed25519"),
 		wish.WithMiddleware(
-			myCustomBubbleteaMiddleware(),
+			portfolioInit(),
+			trackUser(),
 			logging.Middleware(),
 		),
 	)
@@ -64,7 +83,28 @@ func main() {
 	}
 
 }
-func myCustomBubbleteaMiddleware() wish.Middleware {
+func trackUser() wish.Middleware {
+	return func(next ssh.Handler) ssh.Handler {
+		return func(session ssh.Session) {
+			fmt.Println(session.User(), session.RemoteAddr().String(), session.Environ())
+			//TODO: think of a better way to do this
+			dat, _ := os.ReadFile("visits.txt")
+			var visits visits
+			json.Unmarshal(dat, &visits)
+			visits.Visits += 1
+			v_count = visits.Visits
+			next(session)
+			s, _ := json.Marshal(visits)
+			os.WriteFile("visits.txt", s, 0644)
+		}
+	}
+}
+
+type visits struct {
+	Visits int `json:"visits"`
+}
+
+func portfolioInit() wish.Middleware {
 	newProg := func(m tea.Model, opts ...tea.ProgramOption) *tea.Program {
 		p := tea.NewProgram(m, opts...)
 		go func() {
@@ -82,6 +122,7 @@ func myCustomBubbleteaMiddleware() wish.Middleware {
 			wish.Fatalln(s, "no active terminal, skipping")
 			return nil
 		}
+
 		lipgloss.SetHasDarkBackground(true)
 		_ = os.Setenv("COLORTERM", "truecolor")
 		_ = os.Setenv("TERM", "xterm-256color")
@@ -110,7 +151,7 @@ func myCustomBubbleteaMiddleware() wish.Middleware {
 				description: viewport.New(0, 0),
 			},
 			tabs: tabInterface{
-				tabs: []string{"About Me", "My Skills", "Contact Me"},
+				tabs: []string{"About Me", "My Skills", "Contact Me", "Blog"},
 				idx:  0,
 			},
 			mySkills: mySkills{
@@ -284,16 +325,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 func (m model) View() string {
-	docStyle := lipgloss.NewStyle().Padding(1, 2).BorderStyle(lipgloss.NormalBorder()).Foreground(lipgloss.Color("250"))
+
+	docStyle := lipgloss.NewStyle().Padding(1, 1).BorderStyle(lipgloss.NormalBorder()).Foreground(lipgloss.Color("250"))
+	tabView := lipgloss.JoinHorizontal(lipgloss.Center, m.tabs.View(), lipgloss.PlaceHorizontal(m.width-49, lipgloss.Left, lipgloss.PlaceHorizontal(m.width-50, lipgloss.Right, docStyle.Padding(0, 1).Render(fmt.Sprintf("Uptime: %s "+
+		"Visits: %d", time.Since(uptime).Truncate(time.Second).String(), v_count)))))
 	switch m.tabs.tabs[m.tabs.idx] {
 	case "My Skills":
-		return lipgloss.JoinVertical(lipgloss.Center, m.tabs.View(), m.mySkills.frameworks.View(), docStyle.Render(lipgloss.JoinHorizontal(lipgloss.Center, m.mySkills.expandedDescription.View())))
+		return lipgloss.JoinVertical(lipgloss.Center, tabView, m.mySkills.frameworks.View(), docStyle.Render(lipgloss.JoinHorizontal(lipgloss.Center, m.mySkills.expandedDescription.View())))
 	case "Contact Me":
 		render := docStyle.Render(lipgloss.JoinVertical(lipgloss.Center, m.contactMe.name.View(), m.contactMe.email.View(), m.contactMe.content.View()))
-		return lipgloss.JoinVertical(lipgloss.Center, m.tabs.View(), "write me a message here and i'll (probably) get back to you \n press esc to escape and enter to submit", lipgloss.Place(m.width, m.height-40, lipgloss.Center, lipgloss.Center, render))
+		return lipgloss.JoinVertical(lipgloss.Center, tabView, "write me a message here and i'll (probably) get back to you \n press esc to escape and enter to submit", lipgloss.Place(m.width, m.height-40, lipgloss.Center, lipgloss.Center, render))
 	}
 
-	return lipgloss.JoinVertical(lipgloss.Center, m.tabs.View(), docStyle.Copy().AlignHorizontal(lipgloss.Center).Render(m.mainPage.description.View()))
+	return lipgloss.JoinVertical(lipgloss.Center, tabView, docStyle.Copy().AlignHorizontal(lipgloss.Center).Render(m.mainPage.description.View()))
 }
 
 func loadFrameworks() []list.Item {
