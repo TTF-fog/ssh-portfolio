@@ -19,7 +19,9 @@ import (
 	"github.com/charmbracelet/wish/bubbletea"
 	"github.com/charmbracelet/wish/logging"
 	"github.com/muesli/termenv"
+	"io"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -146,12 +148,29 @@ func portfolioInit() wish.Middleware {
 		cont_content := textarea.New()
 		cont_content.Placeholder = "Your Message"
 		cont_content.CharLimit = 156
+		hack_chan := make(chan *http.Response)
+		go GetAsyncData("https://hackatime.hackclub.com/api/v1/users/U093XFSQ344/stats", hack_chan)
+		response := <-hack_chan
+		defer response.Body.Close()
+		var stats UserStats
+		if response.StatusCode == 200 {
+			body, _ := io.ReadAll(response.Body)
+			err := json.Unmarshal(body, &stats)
+			var temp map[string]json.RawMessage
+			json.Unmarshal(body, &temp)
+			json.Unmarshal(temp["data"], &stats)
+			if err != nil {
+				panic(err)
+			}
+		} else {
+			panic("Could not get user stats")
+		}
 		m := model{
 			mainPage: mainPage{
 				description: viewport.New(0, 0),
 			},
 			tabs: tabInterface{
-				tabs: []string{"About Me", "My Skills", "Contact Me", "Blog"},
+				tabs: []string{"About Me", "My Skills", "Contact Me", "Blog", "Stats"},
 				idx:  0,
 			},
 			mySkills: mySkills{
@@ -159,6 +178,10 @@ func portfolioInit() wish.Middleware {
 				expandedDescription: viewport.New(0, 0),
 			},
 			contactMe: contactMe{name: ti, email: t2, content: cont_content},
+			noLifeStats: noLifeStats{
+				allTimeStats: stats,
+				dailyStats:   stats,
+			},
 		}
 
 		data, _ := os.ReadFile("artichoke.md")
@@ -177,15 +200,16 @@ func portfolioInit() wish.Middleware {
 }
 
 type model struct {
-	content   string
-	ready     bool
-	width     int
-	height    int
-	time      time.Time
-	tabs      tabInterface
-	mainPage  mainPage
-	mySkills  mySkills
-	contactMe contactMe
+	content     string
+	ready       bool
+	width       int
+	height      int
+	time        time.Time
+	tabs        tabInterface
+	mainPage    mainPage
+	mySkills    mySkills
+	contactMe   contactMe
+	noLifeStats noLifeStats
 }
 
 type timeMsg time.Time
@@ -235,7 +259,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return m, tea.Quit
-		case "tab":
+		case "up":
+			if m.tabs.tabs[m.tabs.idx] == "Contact Me" {
+				if m.contactMe.name.Focused() {
+					m.contactMe.name.Blur()
+					m.contactMe.content.Focus()
+					return m, nil
+				} else if m.contactMe.email.Focused() {
+					m.contactMe.email.Blur()
+					m.contactMe.name.Focus()
+					return m, nil
+				} else if m.contactMe.content.Focused() {
+					m.contactMe.email.Focus()
+					m.contactMe.content.Blur()
+					return m, nil
+				}
+			}
+		case "down":
 			if m.tabs.tabs[m.tabs.idx] == "Contact Me" {
 				if m.contactMe.name.Focused() {
 					m.contactMe.name.Blur()
@@ -251,6 +291,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 			}
+		case "tab":
 			if m.tabs.idx < len(m.tabs.tabs)-1 {
 				m.tabs.idx++
 				if m.tabs.tabs[m.tabs.idx] == "Contact Me" {
@@ -261,21 +302,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		case "shift+tab":
-			if m.tabs.tabs[m.tabs.idx] == "Contact Me" {
-				if m.contactMe.name.Focused() {
-					m.contactMe.name.Blur()
-					m.contactMe.content.Focus()
-					return m, nil
-				} else if m.contactMe.email.Focused() {
-					m.contactMe.email.Blur()
-					m.contactMe.name.Focus()
-					return m, nil
-				} else if m.contactMe.content.Focused() {
-					m.contactMe.email.Focus()
-					m.contactMe.content.Blur()
-					return m, nil
-				}
-			}
 			if m.tabs.idx > 0 {
 				m.tabs.idx--
 				if m.tabs.tabs[m.tabs.idx] == "Contact Me" {
@@ -320,6 +346,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 		m.contactMe.content, cmd = m.contactMe.content.Update(msg)
 		cmds = append(cmds, cmd)
+
 	}
 
 	return m, tea.Batch(cmds...)
@@ -327,17 +354,30 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m model) View() string {
 
 	docStyle := lipgloss.NewStyle().Padding(1, 1).BorderStyle(lipgloss.NormalBorder()).Foreground(lipgloss.Color("250"))
-	tabView := lipgloss.JoinHorizontal(lipgloss.Center, m.tabs.View(), lipgloss.PlaceHorizontal(m.width-49, lipgloss.Left, lipgloss.PlaceHorizontal(m.width-50, lipgloss.Right, docStyle.Padding(0, 1).Render(fmt.Sprintf("Uptime: %s "+
-		"Visits: %d", time.Since(uptime).Truncate(time.Second).String(), v_count)))))
-	switch m.tabs.tabs[m.tabs.idx] {
-	case "My Skills":
-		return lipgloss.JoinVertical(lipgloss.Center, tabView, m.mySkills.frameworks.View(), docStyle.Render(lipgloss.JoinHorizontal(lipgloss.Center, m.mySkills.expandedDescription.View())))
-	case "Contact Me":
-		render := docStyle.Render(lipgloss.JoinVertical(lipgloss.Center, m.contactMe.name.View(), m.contactMe.email.View(), m.contactMe.content.View()))
-		return lipgloss.JoinVertical(lipgloss.Center, tabView, "write me a message here and i'll (probably) get back to you \n press esc to escape and enter to submit", lipgloss.Place(m.width, m.height-40, lipgloss.Center, lipgloss.Center, render))
+	tabs := m.tabs.View()
+	stats := docStyle.Padding(0, 1).Render(fmt.Sprintf("Uptime: %s "+
+		"Visits: %d", time.Since(uptime).Truncate(time.Second).String(), v_count))
+
+	remainingWidth := m.width - lipgloss.Width(tabs)
+	if remainingWidth < 0 {
+		remainingWidth = 0
 	}
 
-	return lipgloss.JoinVertical(lipgloss.Center, tabView, docStyle.Copy().AlignHorizontal(lipgloss.Center).Render(m.mainPage.description.View()))
+	statsPlaced := lipgloss.PlaceHorizontal(remainingWidth, lipgloss.Right, stats)
+	tabView := lipgloss.JoinHorizontal(lipgloss.Top, tabs, statsPlaced)
+
+	switch m.tabs.tabs[m.tabs.idx] {
+	case "My Skills":
+		return m.mySkills.View(tabView)
+	case "Contact Me":
+		return m.contactMe.View(tabView, m.width, m.height)
+	case "Blog":
+		return lipgloss.JoinVertical(lipgloss.Center, tabView, "WIP!")
+	case "Stats":
+		return m.noLifeStats.View(tabView)
+	}
+
+	return lipgloss.JoinVertical(lipgloss.Left, tabView, "Tab / Shift+Tab to navigate", docStyle.Copy().AlignHorizontal(lipgloss.Left).Render(m.mainPage.description.View()))
 }
 
 func loadFrameworks() []list.Item {
@@ -354,4 +394,12 @@ func loadFrameworks() []list.Item {
 	}
 	fmt.Println(frameworks)
 	return frameworks
+}
+
+func GetAsyncData(url string, rc chan *http.Response) {
+	data, err := http.Get(url)
+	if err != nil {
+		panic(err)
+	}
+	rc <- data //i think thi puts the data into the channeL>?
 }

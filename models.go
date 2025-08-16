@@ -5,45 +5,29 @@ import (
 	"fmt"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/progress"
-	"github.com/charmbracelet/bubbles/textarea"
-	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"io"
-	"os"
 	"strings"
+	"time"
 )
 
 const (
 	PADDING = 0
 )
 
-type mainPage struct {
-	description viewport.Model
-}
-type mySkills struct {
-	frameworks          list.Model
-	expandedDescription viewport.Model
-}
-type contactMe struct {
-	name    textinput.Model
-	email   textinput.Model
-	content textarea.Model
+type Article struct {
+	DatePublished time.Time `json:"DatePublished"`
+	Name          string    `json:"Title,omitempty"`
+	Desc          string    `json:"Description,omitempty"`
+	Body          string    `json:"Body,omitempty"`
+	Categories    []string  `json:"Categories,omitempty"`
 }
 
-func (contact *contactMe) Dump() {
-	var data string
-	data = fmt.Sprintf("Contact Name: %s\nContact Email: %s\n Content: %s\n", contact.name.Value(), contact.email.Value(), insertNth(contact.content.Value(), 40))
-	//TODO: unsanitized paths could cause security vuln, fix
-	err := os.WriteFile("messages/message-"+contact.name.Value(), []byte(data), 0644)
-	if err != nil {
-		panic(err)
-	}
-	contact.name.Reset()
-	contact.email.Reset()
-	contact.content.Reset()
-}
+func (i *Article) Title() string       { return i.Name }
+func (i *Article) Description() string { return i.Desc }
+func (i *Article) FilterValue() string { return i.Name }
+func (*Article) Init() tea.Cmd         { return nil }
 
 type itemDelegate struct{}
 
