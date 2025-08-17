@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/progress"
@@ -89,15 +88,6 @@ func (i *Framework) Description() string { return i.Desc }
 func (i *Framework) FilterValue() string { return i.Name }
 func (*Framework) Init() tea.Cmd         { return nil }
 
-func insertNth(s string, n int) string {
-	var buffer bytes.Buffer
-	var n_1 = n - 1
-	var l_1 = len(s) - 1
-	for i, rune := range s {
-		buffer.WriteRune(rune)
-		if i%n == n_1 && i != l_1 {
-			buffer.WriteRune('\n')
-		}
-	}
-	return buffer.String()
+type visits struct {
+	Visits int `json:"visits"`
 }

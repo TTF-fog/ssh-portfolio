@@ -39,9 +39,12 @@ func (m *mySkills) View(TabView string) string {
 
 type noLifeStats struct {
 	allTimeStats      UserStats
-	dailyStats        UserStats
+	dailyStats        dailyUserStats
 	languageBreakdown []*progress.Model
 	projects          table.Model
+}
+type dailyUserStats struct {
+	Text string `json:"text"`
 }
 
 func (m *noLifeStats) View(TabView string) string {
@@ -54,12 +57,17 @@ func (m *noLifeStats) View(TabView string) string {
 		if l.Name == "JSON" {
 			l.Name = "C++"
 		}
-		languageStack += fmt.Sprintf("%d. %s for %s \n", ind+1, l.Name, l.Text)
+
+		languageStack += fmt.Sprintf("\n %d. %s for %s \n", ind+1, l.Name, l.Text)
+		languageStack += docStyle.Padding(1).Render(progress.New().ViewAs(l.Percent / 100))
 		if ind == 4 {
 			break
 		}
 	}
-	return lipgloss.JoinVertical(lipgloss.Center, TabView, docStyle.Align(lipgloss.Center).Render(fmt.Sprintf("I have worked for %s, since the First of June, 2025\n %s", m.allTimeStats.HumanReadableTotal, languageStack)))
+	if m.dailyStats.Text == "Start coding to track your time" {
+		return lipgloss.JoinVertical(lipgloss.Center, TabView, docStyle.Align(lipgloss.Center).Render(fmt.Sprintf("I have worked for %s, since the First of June, 2025\n %s", m.allTimeStats.HumanReadableTotal, languageStack)))
+	}
+	return lipgloss.JoinVertical(lipgloss.Center, TabView, docStyle.Align(lipgloss.Center).Render(fmt.Sprintf("I have worked for %s, since the First of June, 2025\n Today, i have coded for %s \n %s", m.allTimeStats.HumanReadableTotal, m.dailyStats.Text, languageStack)))
 }
 
 type UserStats struct {

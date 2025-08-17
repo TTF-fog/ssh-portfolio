@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -20,11 +19,12 @@ import (
 	"github.com/charmbracelet/wish/logging"
 	"github.com/muesli/termenv"
 	"io"
+	"sync"
+
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 )
@@ -35,13 +35,32 @@ const (
 )
 
 var uptime time.Time
-var v_count int
+var vCount int
+var authToken string
+var logger fileLogger
 
+type fileLogger struct {
+	file *os.File
+	lock *sync.RWMutex
+}
+
+func (f *fileLogger) log(s string) {
+	f.lock.Lock()
+	defer f.lock.Unlock()
+	fmt.Fprintln(f.file, s)
+}
 func main() {
+	f, _ := os.OpenFile("log.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	logger = fileLogger{
+		file: f,
+		lock: &sync.RWMutex{},
+	}
 	var port string
 	var host string
 	port = PORT
 	host = HOST
+	authToken, _ = os.LookupEnv("HACKATIME_API_KEY")
+
 	key, found := os.LookupEnv("PORT")
 
 	if found {
@@ -89,21 +108,13 @@ func trackUser() wish.Middleware {
 	return func(next ssh.Handler) ssh.Handler {
 		return func(session ssh.Session) {
 			fmt.Println(session.User(), session.RemoteAddr().String(), session.Environ())
-			//TODO: think of a better way to do this
-			dat, _ := os.ReadFile("visits.txt")
-			var visits visits
-			json.Unmarshal(dat, &visits)
-			visits.Visits += 1
-			v_count = visits.Visits
+			go incrementVisitsCounter(&vCount)
+			go logger.log(fmt.Sprintf("visits: %d, user %s, ip %s", vCount, session.User(), session.RemoteAddr().String()))
+			//hehehehhe
 			next(session)
-			s, _ := json.Marshal(visits)
-			os.WriteFile("visits.txt", s, 0644)
+
 		}
 	}
-}
-
-type visits struct {
-	Visits int `json:"visits"`
 }
 
 func portfolioInit() wish.Middleware {
@@ -134,7 +145,7 @@ func portfolioInit() wish.Middleware {
 			data, _ := os.ReadFile("descs/" + item.Name())
 			descs[item.Name()] = string(data)
 		}
-		list_items := loadFrameworks()
+		listItems := loadFrameworks()
 
 		ti := textinput.New()
 		ti.Placeholder = "Your Name"
@@ -145,25 +156,55 @@ func portfolioInit() wish.Middleware {
 		t2.CharLimit = 156
 		t2.Width = 20
 
-		cont_content := textarea.New()
-		cont_content.Placeholder = "Your Message"
-		cont_content.CharLimit = 156
-		hack_chan := make(chan *http.Response)
-		go GetAsyncData("https://hackatime.hackclub.com/api/v1/users/U093XFSQ344/stats", hack_chan)
-		response := <-hack_chan
-		defer response.Body.Close()
+		contContent := textarea.New()
+		contContent.Placeholder = "Your Message"
+		contContent.CharLimit = 156
+
+		hackChan := make(chan *http.Response)
+		go GetAsyncData("https://hackatime.hackclub.com/api/v1/users/U093XFSQ344/stats", hackChan, authToken)
+		response := <-hackChan
+		go GetAsyncData("https://hackatime.hackclub.com/api/hackatime/v1/users/U093XFSQ344/statusbar/today", hackChan, authToken)
+		responseDaily := <-hackChan
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
+			if err != nil {
+				logger.log(fmt.Sprintf("error closing body: %s", err.Error()))
+			}
+		}(response.Body)
+
 		var stats UserStats
+		var dailyStats dailyUserStats
 		if response.StatusCode == 200 {
 			body, _ := io.ReadAll(response.Body)
 			err := json.Unmarshal(body, &stats)
 			var temp map[string]json.RawMessage
-			json.Unmarshal(body, &temp)
-			json.Unmarshal(temp["data"], &stats)
+			err = json.Unmarshal(body, &temp)
+			if err != nil {
+				logger.log(fmt.Sprintf("error unmarshalling response: %s", err.Error()))
+			}
+			err = json.Unmarshal(temp["data"], &stats)
+			if err != nil {
+				logger.log(fmt.Sprintf("error unmarshalling response: %s", err.Error()))
+			}
 			if err != nil {
 				panic(err)
 			}
 		} else {
-			panic("Could not get user stats")
+			stats.HumanReadableTotal = "Failed To Get Data"
+		}
+		if responseDaily.StatusCode == 200 {
+			body, _ := io.ReadAll(responseDaily.Body)
+			err := json.Unmarshal(body, &dailyStats)
+			var temp map[string]map[string]json.RawMessage
+			json.Unmarshal(body, &temp)
+			println(string(temp["data"]["grand_total"]))
+			json.Unmarshal(temp["data"]["grand_total"], &dailyStats)
+
+			if err != nil {
+				panic(err)
+			}
+		} else {
+			dailyStats.Text = "Failed to Retrieve!"
 		}
 		m := model{
 			mainPage: mainPage{
@@ -174,17 +215,17 @@ func portfolioInit() wish.Middleware {
 				idx:  0,
 			},
 			mySkills: mySkills{
-				frameworks:          list.New(list_items, itemDelegate{}, 0, 0),
+				frameworks:          list.New(listItems, itemDelegate{}, 0, 0),
 				expandedDescription: viewport.New(0, 0),
 			},
-			contactMe: contactMe{name: ti, email: t2, content: cont_content},
+			contactMe: contactMe{name: ti, email: t2, content: contContent},
 			noLifeStats: noLifeStats{
 				allTimeStats: stats,
-				dailyStats:   stats,
+				dailyStats:   dailyStats,
 			},
 		}
 
-		data, _ := os.ReadFile("artichoke.md")
+		data, _ := os.ReadFile("about_me.md")
 		m.content = string(data)
 		m.mySkills.frameworks.SetShowTitle(false)
 		m.mySkills.frameworks.SetShowHelp(true)
@@ -353,10 +394,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 func (m model) View() string {
 
-	docStyle := lipgloss.NewStyle().Padding(1, 1).BorderStyle(lipgloss.NormalBorder()).Foreground(lipgloss.Color("250"))
+	docStyle := lipgloss.NewStyle().Padding(1, 1).BorderStyle(lipgloss.NormalBorder())
 	tabs := m.tabs.View()
 	stats := docStyle.Padding(0, 1).Render(fmt.Sprintf("Uptime: %s "+
-		"Visits: %d", time.Since(uptime).Truncate(time.Second).String(), v_count))
+		"Visits: %d", time.Since(uptime).Truncate(time.Second).String(), vCount))
 
 	remainingWidth := m.width - lipgloss.Width(tabs)
 	if remainingWidth < 0 {
@@ -377,29 +418,5 @@ func (m model) View() string {
 		return m.noLifeStats.View(tabView)
 	}
 
-	return lipgloss.JoinVertical(lipgloss.Left, tabView, "Tab / Shift+Tab to navigate", docStyle.Copy().AlignHorizontal(lipgloss.Left).Render(m.mainPage.description.View()))
-}
-
-func loadFrameworks() []list.Item {
-	items, _ := os.ReadDir("descs")
-	var frameworks []list.Item
-	for _, item := range items {
-		name := item.Name()
-		dat, _ := os.ReadFile(filepath.Join("descs", name))
-		var framework Framework
-		json.Unmarshal(dat, &framework)
-		framework.progress = progress.New()
-		frameworks = append(frameworks, &framework)
-
-	}
-	fmt.Println(frameworks)
-	return frameworks
-}
-
-func GetAsyncData(url string, rc chan *http.Response) {
-	data, err := http.Get(url)
-	if err != nil {
-		panic(err)
-	}
-	rc <- data //i think thi puts the data into the channeL>?
+	return lipgloss.JoinVertical(lipgloss.Left, tabView, "Tab / Shift+Tab to navigate", docStyle.AlignHorizontal(lipgloss.Left).Render(m.mainPage.description.View()))
 }
