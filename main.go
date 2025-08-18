@@ -360,6 +360,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "esc":
 			m.tabs.idx = 0
+		case "f":
+			if m.tabs.tabs[m.tabs.idx] == "My Skills" {
+				m.mySkills.contentFocused = !m.mySkills.contentFocused
+			}
 		}
 
 	}
@@ -409,7 +413,7 @@ func (m model) View() string {
 
 	switch m.tabs.tabs[m.tabs.idx] {
 	case "My Skills":
-		return m.mySkills.View(tabView)
+		return m.mySkills.View(tabView, m.height)
 	case "Contact Me":
 		return m.contactMe.View(tabView, m.width, m.height)
 	case "Blog":

@@ -20,6 +20,7 @@ type mainPage struct {
 type mySkills struct {
 	frameworks          list.Model
 	expandedDescription viewport.Model
+	contentFocused      bool
 }
 type contactMe struct {
 	name    textinput.Model
@@ -32,9 +33,13 @@ func (c *contactMe) View(TabView string, width int, height int) string {
 	render := docStyle.Render(lipgloss.JoinVertical(lipgloss.Center, c.name.View(), c.email.View(), c.content.View()))
 	return lipgloss.JoinVertical(lipgloss.Center, TabView, "write me a message here and i'll (probably) get back to you \n press esc to escape and enter to submit, use arrow key to navigate", lipgloss.Place(width, height-40, lipgloss.Center, lipgloss.Center, render))
 }
-func (m *mySkills) View(TabView string) string {
+func (m *mySkills) View(TabView string, height int) string {
 	docStyle := lipgloss.NewStyle().Padding(1, 1).BorderStyle(lipgloss.NormalBorder()).Foreground(lipgloss.Color("250"))
-	return lipgloss.JoinVertical(lipgloss.Center, TabView, m.frameworks.View(), docStyle.Render(lipgloss.JoinHorizontal(lipgloss.Center, m.expandedDescription.View())))
+	if m.contentFocused {
+		m.expandedDescription.Height = height - 10
+		return lipgloss.JoinVertical(lipgloss.Center, TabView, "press f to unfocus", docStyle.Render(lipgloss.JoinHorizontal(lipgloss.Center, m.expandedDescription.View())))
+	}
+	return lipgloss.JoinVertical(lipgloss.Center, TabView, "press f to focus", m.frameworks.View(), docStyle.Render(lipgloss.JoinHorizontal(lipgloss.Center, m.expandedDescription.View())))
 }
 
 type noLifeStats struct {
