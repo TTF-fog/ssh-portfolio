@@ -38,6 +38,8 @@ var uptime time.Time
 var vCount int
 var authToken string
 var logger fileLogger
+var stats UserStats
+var dailyStats dailyUserStats
 
 type fileLogger struct {
 	file *os.File
@@ -55,12 +57,19 @@ func main() {
 		file: f,
 		lock: &sync.RWMutex{},
 	}
+
 	var port string
 	var host string
 	port = PORT
 	host = HOST
 	authToken, _ = os.LookupEnv("HACKATIME_API_KEY")
-
+	cacheData(&stats, &dailyStats)
+	go func() {
+		for {
+			cacheData(&stats, &dailyStats)
+			time.Sleep(120 * time.Second)
+		}
+	}()
 	key, found := os.LookupEnv("PORT")
 
 	if found {
@@ -160,52 +169,6 @@ func portfolioInit() wish.Middleware {
 		contContent.Placeholder = "Your Message"
 		contContent.CharLimit = 156
 
-		hackChan := make(chan *http.Response)
-		go GetAsyncData("https://hackatime.hackclub.com/api/v1/users/U093XFSQ344/stats", hackChan, authToken)
-		response := <-hackChan
-		go GetAsyncData("https://hackatime.hackclub.com/api/hackatime/v1/users/U093XFSQ344/statusbar/today", hackChan, authToken)
-		responseDaily := <-hackChan
-		defer func(Body io.ReadCloser) {
-			err := Body.Close()
-			if err != nil {
-				logger.log(fmt.Sprintf("error closing body: %s", err.Error()))
-			}
-		}(response.Body)
-
-		var stats UserStats
-		var dailyStats dailyUserStats
-		if response.StatusCode == 200 {
-			body, _ := io.ReadAll(response.Body)
-			err := json.Unmarshal(body, &stats)
-			var temp map[string]json.RawMessage
-			err = json.Unmarshal(body, &temp)
-			if err != nil {
-				logger.log(fmt.Sprintf("error unmarshalling response: %s", err.Error()))
-			}
-			err = json.Unmarshal(temp["data"], &stats)
-			if err != nil {
-				logger.log(fmt.Sprintf("error unmarshalling response: %s", err.Error()))
-			}
-			if err != nil {
-				panic(err)
-			}
-		} else {
-			stats.HumanReadableTotal = "Failed To Get Data"
-		}
-		if responseDaily.StatusCode == 200 {
-			body, _ := io.ReadAll(responseDaily.Body)
-			err := json.Unmarshal(body, &dailyStats)
-			var temp map[string]map[string]json.RawMessage
-			json.Unmarshal(body, &temp)
-			println(string(temp["data"]["grand_total"]))
-			json.Unmarshal(temp["data"]["grand_total"], &dailyStats)
-
-			if err != nil {
-				panic(err)
-			}
-		} else {
-			dailyStats.Text = "Failed to Retrieve!"
-		}
 		m := model{
 			mainPage: mainPage{
 				description: viewport.New(0, 0),
@@ -423,4 +386,46 @@ func (m model) View() string {
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Left, tabView, "Tab / Shift+Tab to navigate", docStyle.AlignHorizontal(lipgloss.Left).Render(m.mainPage.description.View()))
+}
+
+func cacheData(stats *UserStats, dailyStats *dailyUserStats) {
+	hackChan := make(chan *http.Response)
+	go GetAsyncData("https://hackatime.hackclub.com/api/v1/users/U093XFSQ344/stats", hackChan, authToken)
+	response := <-hackChan
+	go GetAsyncData("https://hackatime.hackclub.com/api/hackatime/v1/users/U093XFSQ344/statusbar/today", hackChan, authToken)
+	responseDaily := <-hackChan
+	if response.StatusCode == 200 {
+		body, _ := io.ReadAll(response.Body)
+		err := json.Unmarshal(body, &stats)
+		var temp map[string]json.RawMessage
+		err = json.Unmarshal(body, &temp)
+		if err != nil {
+			logger.log(fmt.Sprintf("error unmarshalling response: %s", err.Error()))
+		}
+		err = json.Unmarshal(temp["data"], &stats)
+		if err != nil {
+			logger.log(fmt.Sprintf("error unmarshalling response: %s", err.Error()))
+		}
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		stats.HumanReadableTotal = "Failed To Get Data"
+	}
+	if responseDaily.StatusCode == 200 {
+		body, _ := io.ReadAll(responseDaily.Body)
+		err := json.Unmarshal(body, &dailyStats)
+		var temp map[string]map[string]json.RawMessage
+		json.Unmarshal(body, &temp)
+		println(string(temp["data"]["grand_total"]))
+		json.Unmarshal(temp["data"]["grand_total"], &dailyStats)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		dailyStats.Text = "Failed to Retrieve!"
+	}
+	dailyStats.Text = dailyStats.Text + "\n Cached at " + time.Now().Format("3:04:05PM")
+	logger.log("Cached hackatime data at" + time.Now().Format("2006-01-02 15:04:05"))
+
 }

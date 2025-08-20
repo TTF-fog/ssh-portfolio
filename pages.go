@@ -113,6 +113,6 @@ func (contact *contactMe) Dump() {
 }
 
 type blog struct {
-	frameworks          list.Model
+	Blogs               list.Model
 	expandedDescription viewport.Model
 }

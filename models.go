@@ -7,6 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"io"
+	_ "net/http/pprof"
 	"strings"
 	"time"
 )
@@ -49,7 +50,6 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 					Render("> " + strings.Join(s, "\n "))
 			}
 		}
-		println(item.Percent)
 		str := fmt.Sprintf("%s \n %s ... \n %s", item.Title(), item.Desc, item.progress.ViewAs(item.Percent))
 		fmt.Fprint(w, fn(str))
 	}
@@ -90,4 +90,11 @@ func (*Framework) Init() tea.Cmd         { return nil }
 
 type visits struct {
 	Visits int `json:"visits"`
+}
+type Theme struct {
+	tabSelectColor     lipgloss.Color
+	globalBorderColor  lipgloss.Color
+	HighlightColor     lipgloss.Color
+	textEmphasisColor  lipgloss.Color
+	textEmphasisColor2 lipgloss.Color
 }
