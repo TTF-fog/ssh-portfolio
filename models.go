@@ -28,9 +28,44 @@ func (i *Article) Title() string       { return i.Name }
 func (i *Article) Description() string { return i.Desc }
 func (i *Article) FilterValue() string { return i.Name }
 func (*Article) Init() tea.Cmd         { return nil }
+func (i *Article) getFormattedData() string {
+	if time.Since(i.DatePublished).Hours() > 336 {
+		return fmt.Sprintf("%s ⏲ %s \n %s", i.Name, i.DatePublished.String(), i.Desc)
+	} else {
+		return fmt.Sprintf("%s \t ⏲ %s Ago \n %s", i.Name, time.Since(i.DatePublished).Truncate(time.Second), i.Desc)
+	}
+
+}
 
 type itemDelegate struct{}
+type blogDelegate struct{}
 
+func (b blogDelegate) Height() int {
+	return 6
+}
+func (b blogDelegate) Spacing() int {
+	return 0
+}
+func (b blogDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
+	return nil
+}
+func (b blogDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+	fn := lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).Foreground(lipgloss.Color("201")).Padding(PADDING).Render
+	switch item := listItem.(type) {
+	case *Article:
+		if index == m.Index() {
+			fn = func(s ...string) string {
+				return lipgloss.NewStyle().Margin(0, PADDING).
+					BorderStyle(lipgloss.NormalBorder()).
+					Foreground(lipgloss.Color("201")).
+					Background(lipgloss.Color("235")).
+					Render("> " + strings.Join(s, "\n "))
+			}
+		}
+		str := item.getFormattedData()
+		fmt.Fprint(w, fn(str))
+	}
+}
 func (d itemDelegate) Height() int { return 6 }
 
 func (d itemDelegate) Spacing() int { return 0 }
@@ -76,11 +111,12 @@ func (d tabInterface) View() string {
 }
 
 type Framework struct {
-	Name                  string `json:"Name,omitempty"`
-	Desc                  string `json:"Desc,omitempty"`
-	progress              progress.Model
-	ExpandedDescriptionMD string  `json:"ExpandedDescriptionMD,omitempty"`
-	Percent               float64 `json:"Percent,omitempty"`
+	Name                      string `json:"Name,omitempty"`
+	Desc                      string `json:"Desc,omitempty"`
+	progress                  progress.Model
+	ExpandedDescriptionMD     string  `json:"ExpandedDescriptionMD,omitempty"`
+	ExpandedDescriptionMDFile string  `json:"ExpandedDescriptionMDFile,omitempty"`
+	Percent                   float64 `json:"Percent,omitempty"`
 }
 
 func (i *Framework) Title() string       { return i.Name }

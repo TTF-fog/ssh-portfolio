@@ -39,7 +39,7 @@ func (m *mySkills) View(TabView string, height int) string {
 		m.expandedDescription.Height = height - 10
 		return lipgloss.JoinVertical(lipgloss.Center, TabView, "press f to unfocus", docStyle.Render(lipgloss.JoinHorizontal(lipgloss.Center, m.expandedDescription.View())))
 	}
-	return lipgloss.JoinVertical(lipgloss.Center, TabView, "press f to focus", m.frameworks.View(), docStyle.Render(lipgloss.JoinHorizontal(lipgloss.Center, m.expandedDescription.View())))
+	return lipgloss.JoinVertical(lipgloss.Center, TabView, "press f to focus text view (allows scrolling)", m.frameworks.View(), docStyle.Render(lipgloss.JoinHorizontal(lipgloss.Center, m.expandedDescription.View())))
 }
 
 type noLifeStats struct {
@@ -115,4 +115,22 @@ func (contact *contactMe) Dump() {
 type blog struct {
 	Blogs               list.Model
 	expandedDescription viewport.Model
+	contentFocused      bool
+}
+
+func (b *blog) View(TabView string, height int, width int) string {
+	docStyle := lipgloss.NewStyle().Padding(1, 1).BorderStyle(lipgloss.NormalBorder()).Foreground(lipgloss.Color("250"))
+	if b.contentFocused {
+		return lipgloss.JoinVertical(lipgloss.Center, docStyle.Render(b.expandedDescription.View()))
+	}
+	mainView := lipgloss.JoinHorizontal(lipgloss.Top,
+		b.Blogs.View(),
+		docStyle.Render(b.expandedDescription.View()),
+	)
+
+	return lipgloss.JoinVertical(lipgloss.Center,
+		TabView,
+		"preview - press f to open",
+		mainView,
+	)
 }

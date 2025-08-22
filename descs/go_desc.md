@@ -1,6 +1,6 @@
 {
   "Name": "Go",
   "Desc": "Language i learnt recently, which i rely heavily on for app development (what you see is all Go!)",
-  "ExpandedDescriptionMD": "Simple, and Elegantly Readable\n====\n## Why i enjoy it\n- In my opinion, it's the best of both worlds. It dosen't have the archaic conventions and strange syntax of C++. \n- And unlike Rust, i don't have to wrap everything in half a dozen .unwrap() calls (also, it genuinely feels like i'm fighting with the compiler)\n\nIt also handles the typical pains of low-level pretty well (types and pointers), meaning it's easy enough to translate thoughts into code.\n\n> Note: When i say syntax, i mean the style of reading. C++ can be fairly convoluted which results in the spiral method of reading declarations\n \n## Projects\n[EncryptUI](https://github.com/TTF-fog/EncryptUI) <br>\n[ToDoIt](https://github.com/TTF-fog/ToDoIt) <br>\n[rotatoLang](https://github.com/TTF-fog/rotatoLang) <br>\n[ssh-portfolio](https://github.com/TTF-fog/ssh-portfolio0)",
-  "Percent": 0.8
+  "ExpandedDescriptionMDFile": "descs_md/go_desc.md",
+  "Percent": 0.87
 }

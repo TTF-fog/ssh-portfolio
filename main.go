@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/charmbracelet/bubbles/list"
@@ -18,11 +17,9 @@ import (
 	"github.com/charmbracelet/wish/bubbletea"
 	"github.com/charmbracelet/wish/logging"
 	"github.com/muesli/termenv"
-	"io"
 	"sync"
 
 	"net"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -41,16 +38,6 @@ var logger fileLogger
 var stats UserStats
 var dailyStats dailyUserStats
 
-type fileLogger struct {
-	file *os.File
-	lock *sync.RWMutex
-}
-
-func (f *fileLogger) log(s string) {
-	f.lock.Lock()
-	defer f.lock.Unlock()
-	fmt.Fprintln(f.file, s)
-}
 func main() {
 	f, _ := os.OpenFile("log.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	logger = fileLogger{
@@ -155,7 +142,7 @@ func portfolioInit() wish.Middleware {
 			descs[item.Name()] = string(data)
 		}
 		listItems := loadFrameworks()
-
+		blogItems := loadBlogs()
 		ti := textinput.New()
 		ti.Placeholder = "Your Name"
 		ti.CharLimit = 156
@@ -186,11 +173,17 @@ func portfolioInit() wish.Middleware {
 				allTimeStats: stats,
 				dailyStats:   dailyStats,
 			},
+			blogPage: blog{
+				Blogs:               list.New(blogItems, blogDelegate{}, 0, 0),
+				expandedDescription: viewport.New(0, 0),
+				contentFocused:      false,
+			},
 		}
 
 		data, _ := os.ReadFile("about_me.md")
 		m.content = string(data)
 		m.mySkills.frameworks.SetShowTitle(false)
+		m.blogPage.Blogs.Title = "Blogs"
 		m.mySkills.frameworks.SetShowHelp(true)
 		opts := append(
 			bubbletea.MakeOptions(s),
@@ -214,6 +207,7 @@ type model struct {
 	mySkills    mySkills
 	contactMe   contactMe
 	noLifeStats noLifeStats
+	blogPage    blog
 }
 
 type timeMsg time.Time
@@ -241,6 +235,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.mySkills.frameworks.SetSize(msg.Width-6, msg.Height/2-4)
 		m.mySkills.expandedDescription.Width = msg.Width - 6
 		m.mySkills.expandedDescription.Height = msg.Height/2 - 8
+		availableHeight := msg.Height - 8
+		listWidth := msg.Width / 3
+
+		m.blogPage.Blogs.SetSize(listWidth, availableHeight)
+		m.blogPage.expandedDescription.Width = msg.Width - listWidth - 6
+		m.blogPage.expandedDescription.Height = availableHeight - 2
+		if m.blogPage.contentFocused {
+			m.blogPage.expandedDescription.Width = msg.Width
+			m.blogPage.expandedDescription.Height = msg.Height - 1
+		} else {
+			m.blogPage.Blogs.SetSize(listWidth, availableHeight)
+			m.blogPage.expandedDescription.Width = msg.Width - listWidth - 6
+			m.blogPage.expandedDescription.Height = availableHeight - 2
+		}
 
 		m.contactMe.content.SetWidth(msg.Width - 30)
 		m.contactMe.content.SetHeight(msg.Height / 2)
@@ -256,6 +264,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.mainPage.description, cmd = m.mainPage.description.Update(msg)
 		cmds = append(cmds, cmd)
 		m.mySkills.frameworks, cmd = m.mySkills.frameworks.Update(msg)
+		cmds = append(cmds, cmd)
+		m.blogPage.expandedDescription, cmd = m.blogPage.expandedDescription.Update(msg)
 		cmds = append(cmds, cmd)
 		return m, tea.Batch(cmds...)
 
@@ -326,6 +336,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "f":
 			if m.tabs.tabs[m.tabs.idx] == "My Skills" {
 				m.mySkills.contentFocused = !m.mySkills.contentFocused
+				return m, nil
+			}
+			if m.tabs.tabs[m.tabs.idx] == "Blog" {
+				m.blogPage.contentFocused = !m.blogPage.contentFocused
+				return m, nil
 			}
 		}
 
@@ -336,16 +351,41 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.mainPage.description, cmd = m.mainPage.description.Update(msg)
 		cmds = append(cmds, cmd)
 	case "My Skills":
-		if key, ok := msg.(tea.KeyMsg); ok && key.String() == "enter" {
-			renderer, _ := glamour.NewTermRenderer(glamour.WithStandardStyle("dark"), glamour.WithWordWrap(m.mainPage.description.Width))
-			switch item := m.mySkills.frameworks.SelectedItem().(type) {
-			case *Framework:
-				str, _ := renderer.Render(item.ExpandedDescriptionMD)
-				m.mySkills.expandedDescription.SetContent(str)
-			}
-		} else {
-			m.mySkills.frameworks, cmd = m.mySkills.frameworks.Update(msg)
+		if m.mySkills.contentFocused {
+			m.mySkills.expandedDescription, cmd = m.mySkills.expandedDescription.Update(msg)
 			cmds = append(cmds, cmd)
+		} else {
+			if key, ok := msg.(tea.KeyMsg); ok && key.String() == "enter" {
+				renderer, _ := glamour.NewTermRenderer(glamour.WithStandardStyle("dark"), glamour.WithWordWrap(m.mainPage.description.Width))
+				switch item := m.mySkills.frameworks.SelectedItem().(type) {
+				case *Framework:
+					str, _ := renderer.Render(item.ExpandedDescriptionMD)
+					m.mySkills.expandedDescription.SetContent(str)
+				}
+			} else {
+				m.mySkills.frameworks, cmd = m.mySkills.frameworks.Update(msg)
+				cmds = append(cmds, cmd)
+			}
+		}
+	case "Blog":
+		if m.blogPage.contentFocused {
+			m.blogPage.expandedDescription, cmd = m.blogPage.expandedDescription.Update(msg)
+			cmds = append(cmds, cmd)
+		} else {
+			ey, _ := msg.(tea.KeyMsg)
+			if ey.String() == "enter" {
+				renderer, _ := glamour.NewTermRenderer(glamour.WithStandardStyle("dark"), glamour.WithWordWrap(m.blogPage.expandedDescription.Width))
+
+				switch item := m.blogPage.Blogs.SelectedItem().(type) {
+				case *Article:
+					str, _ := renderer.Render(item.Body)
+
+					m.blogPage.expandedDescription.SetContent(str)
+				}
+			} else {
+				m.blogPage.Blogs, cmd = m.blogPage.Blogs.Update(msg)
+				cmds = append(cmds, cmd)
+			}
 		}
 	case "Contact Me":
 		m.contactMe.name, cmd = m.contactMe.name.Update(msg)
@@ -362,6 +402,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m model) View() string {
 
 	docStyle := lipgloss.NewStyle().Padding(1, 1).BorderStyle(lipgloss.NormalBorder())
+
+	if m.width < 105 || m.height < 25 {
+		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, "Window too small! Please resize.")
+	}
+
 	tabs := m.tabs.View()
 	stats := docStyle.Padding(0, 1).Render(fmt.Sprintf("Uptime: %s "+
 		"Visits: %d", time.Since(uptime).Truncate(time.Second).String(), vCount))
@@ -380,52 +425,14 @@ func (m model) View() string {
 	case "Contact Me":
 		return m.contactMe.View(tabView, m.width, m.height)
 	case "Blog":
-		return lipgloss.JoinVertical(lipgloss.Center, tabView, "WIP!")
+		if m.blogPage.contentFocused {
+			indicator := lipgloss.PlaceHorizontal(m.width, lipgloss.Center, lipgloss.NewStyle().Reverse(true).Render(" Press 'f' to exit fullscreen "))
+			return lipgloss.JoinVertical(lipgloss.Left, m.blogPage.expandedDescription.View(), indicator)
+		}
+		return m.blogPage.View(tabView, m.height, m.width)
 	case "Stats":
 		return m.noLifeStats.View(tabView)
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Left, tabView, "Tab / Shift+Tab to navigate", docStyle.AlignHorizontal(lipgloss.Left).Render(m.mainPage.description.View()))
-}
-
-func cacheData(stats *UserStats, dailyStats *dailyUserStats) {
-	hackChan := make(chan *http.Response)
-	go GetAsyncData("https://hackatime.hackclub.com/api/v1/users/U093XFSQ344/stats", hackChan, authToken)
-	response := <-hackChan
-	go GetAsyncData("https://hackatime.hackclub.com/api/hackatime/v1/users/U093XFSQ344/statusbar/today", hackChan, authToken)
-	responseDaily := <-hackChan
-	if response.StatusCode == 200 {
-		body, _ := io.ReadAll(response.Body)
-		err := json.Unmarshal(body, &stats)
-		var temp map[string]json.RawMessage
-		err = json.Unmarshal(body, &temp)
-		if err != nil {
-			logger.log(fmt.Sprintf("error unmarshalling response: %s", err.Error()))
-		}
-		err = json.Unmarshal(temp["data"], &stats)
-		if err != nil {
-			logger.log(fmt.Sprintf("error unmarshalling response: %s", err.Error()))
-		}
-		if err != nil {
-			panic(err)
-		}
-	} else {
-		stats.HumanReadableTotal = "Failed To Get Data"
-	}
-	if responseDaily.StatusCode == 200 {
-		body, _ := io.ReadAll(responseDaily.Body)
-		err := json.Unmarshal(body, &dailyStats)
-		var temp map[string]map[string]json.RawMessage
-		json.Unmarshal(body, &temp)
-		println(string(temp["data"]["grand_total"]))
-		json.Unmarshal(temp["data"]["grand_total"], &dailyStats)
-		if err != nil {
-			panic(err)
-		}
-	} else {
-		dailyStats.Text = "Failed to Retrieve!"
-	}
-	dailyStats.Text = dailyStats.Text + "\n Cached at " + time.Now().Format("3:04:05PM")
-	logger.log("Cached hackatime data at" + time.Now().Format("2006-01-02 15:04:05"))
-
 }
