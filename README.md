@@ -13,3 +13,8 @@ Features:
   - easy way to contact me
 - markdown rendering
 - uptime and visits counter
+
+Images - 
+![img.png](img.png)
+![img_1.png](img_1.png)
+![img_2.png](img_2.png)
