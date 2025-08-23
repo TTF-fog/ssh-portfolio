@@ -1,6 +1,8 @@
 module ssh-web
 
-go 1.24
+go 1.24.3
+
+toolchain go1.24.6
 
 require (
 	github.com/charmbracelet/bubbles v0.21.0
@@ -11,6 +13,7 @@ require (
 	github.com/charmbracelet/ssh v0.0.0-20250429213052-383d50896132
 	github.com/charmbracelet/wish v1.4.7
 	github.com/muesli/termenv v0.16.0
+	github.com/ploMP4/chafa-go v0.2.0
 )
 
 require (
@@ -33,6 +36,7 @@ require (
 	github.com/charmbracelet/x/windows v0.2.1 // indirect
 	github.com/creack/pty v1.1.21 // indirect
 	github.com/dlclark/regexp2 v1.11.0 // indirect
+	github.com/ebitengine/purego v0.8.3 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
 	github.com/gorilla/css v1.0.1 // indirect

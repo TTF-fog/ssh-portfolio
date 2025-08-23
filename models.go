@@ -17,11 +17,12 @@ const (
 )
 
 type Article struct {
-	DatePublished time.Time `json:"DatePublished"`
-	Name          string    `json:"Title,omitempty"`
-	Desc          string    `json:"Description,omitempty"`
-	Body          string    `json:"Body,omitempty"`
-	Categories    []string  `json:"Categories,omitempty"`
+	DatePublished time.Time
+	Name          string
+	Desc          string
+	Body          string
+	Categories    []string
+	Images        []string
 }
 
 func (i *Article) Title() string       { return i.Name }
@@ -29,10 +30,16 @@ func (i *Article) Description() string { return i.Desc }
 func (i *Article) FilterValue() string { return i.Name }
 func (*Article) Init() tea.Cmd         { return nil }
 func (i *Article) getFormattedData() string {
+	categoryStyle := lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder()).Foreground(lipgloss.Color("127")).Padding(0, 1)
+	var drawn_categories string
+	if len(i.Categories) > 0 {
+		drawn_categories = categoryStyle.Render(strings.Join(i.Categories, " | "))
+	}
 	if time.Since(i.DatePublished).Hours() > 336 {
-		return fmt.Sprintf("%s ⏲ %s \n %s", i.Name, i.DatePublished.String(), i.Desc)
+
+		return fmt.Sprintf("%s ⏲ %s \n %s \n %s", i.Name, i.DatePublished.String(), i.Desc, drawn_categories)
 	} else {
-		return fmt.Sprintf("%s \t ⏲ %s Ago \n %s", i.Name, time.Since(i.DatePublished).Truncate(time.Second), i.Desc)
+		return fmt.Sprintf("%s  ⏲ %s Ago \n %s \n %s", i.Name, time.Since(i.DatePublished).Truncate(time.Second), i.Desc, drawn_categories)
 	}
 
 }

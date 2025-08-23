@@ -28,6 +28,12 @@ type contactMe struct {
 	content textarea.Model
 }
 
+const (
+	FONT_WIDTH  = 36
+	FONT_HEIGHT = 72
+	N_CHANNELS  = 4
+)
+
 func (c *contactMe) View(TabView string, width int, height int) string {
 	docStyle := lipgloss.NewStyle().Padding(1, 1).BorderStyle(lipgloss.NormalBorder()).Foreground(lipgloss.Color("250"))
 	render := docStyle.Render(lipgloss.JoinVertical(lipgloss.Center, c.name.View(), c.email.View(), c.content.View()))
