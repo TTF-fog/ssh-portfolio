@@ -1,5 +1,7 @@
 Erm, i'd like to interject there for a second.
 ====
+<mdimg  "images/img_4.png-60-60" >
+
 I've daily driven Arch (btw) Linux for over 2 years, as well as developed CI/CD scripts meant to run on Linux Systems.
 I've also used Raspbian and Debian for RoboCup robots.
 

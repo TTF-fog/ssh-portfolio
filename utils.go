@@ -164,7 +164,7 @@ func loadBlogs() []list.Item {
 func getImageString(path string, w int32, h int32, font_width float32, font_height float32) string {
 	pixels, width, height, err := chafa.Load(path)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		logger.log(err.Error())
 		return ""
 	}
 
@@ -203,24 +203,28 @@ func getImageString(path string, w int32, h int32, font_width float32, font_heig
 func parseMarkdownForImages(md string) (string, []string) {
 	re := regexp.MustCompile(`<mdimg\s+"([^"]*)"\s*>`)
 	indexes := re.FindAllStringSubmatchIndex(md, -1)
+	var parsed []string
 	if indexes == nil {
-		return "", []string{}
+		return md, []string{}
 	}
-	var newMarkdown string
-	var images []string //we stick them in later so glamour dosen't get pissed off
+	var newMarkdown strings.Builder
+	var images []string
+
+	prev := 0
 	for IND, index := range indexes {
 		tagstart, tagend := index[0], index[1]
 		contentStart, contentEnd := index[2], index[3]
-		//file_path-width-height
-		parsed := strings.Split(md[contentStart:contentEnd], "-")
-		//TODO: make this suck less shit
+		newMarkdown.WriteString(md[prev:tagstart])
+		// file_path-width-height
+		parsed = strings.Split(md[contentStart:contentEnd], "-")
 		width, _ := strconv.Atoi(parsed[1])
 		height, _ := strconv.Atoi(parsed[2])
 		images = append(images, getImageString(parsed[0], int32(width), int32(height), FONT_WIDTH, FONT_HEIGHT))
-		newMarkdown += md[:tagstart] + fmt.Sprintf("PLACE%dHOLDER", IND) + md[tagend:] + "\n"
-
+		newMarkdown.WriteString(fmt.Sprintf("PLACE%dHOLDER", IND))
+		prev = tagend
 	}
-	return newMarkdown, images
+	newMarkdown.WriteString(md[prev:])
+	return newMarkdown.String(), images
 }
 
 func parseMarkdownAgainForImages(md string, Images []string, imageStyle lipgloss.Style, wrapWidth int) string {

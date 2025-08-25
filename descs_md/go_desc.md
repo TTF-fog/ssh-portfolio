@@ -1,5 +1,7 @@
 Simple, and Elegantly Readable
 ====
+<mdimg  "images/go_gopher.png-80-80" >
+
 ## Why i enjoy it
 - In my opinion, it's the best of both worlds. It dosen't have the archaic conventions and strange syntax of C++. 
 - And unlike Rust, i don't have to wrap everything in half a dozen .unwrap() calls (also, it genuinely feels like i'm fighting with the compiler)

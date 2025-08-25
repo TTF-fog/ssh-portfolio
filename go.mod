@@ -12,6 +12,7 @@ require (
 	github.com/charmbracelet/log v0.4.2
 	github.com/charmbracelet/ssh v0.0.0-20250429213052-383d50896132
 	github.com/charmbracelet/wish v1.4.7
+	github.com/mattn/go-sixel v0.0.5
 	github.com/muesli/termenv v0.16.0
 	github.com/ploMP4/chafa-go v0.2.0
 )
@@ -50,6 +51,7 @@ require (
 	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/sahilm/fuzzy v0.1.1 // indirect
+	github.com/soniakeys/quant v1.0.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	github.com/yuin/goldmark v1.7.8 // indirect
 	github.com/yuin/goldmark-emoji v1.0.5 // indirect

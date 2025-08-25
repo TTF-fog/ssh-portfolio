@@ -9,7 +9,6 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/ssh"
@@ -66,7 +65,6 @@ func main() {
 	if found {
 		host = key
 	}
-
 	uptime = time.Now().Truncate(time.Second)
 	s, err := wish.NewServer(
 		wish.WithAddress(net.JoinHostPort(host, port)),
@@ -132,7 +130,6 @@ func portfolioInit() wish.Middleware {
 			return nil
 		}
 
-		lipgloss.SetHasDarkBackground(true)
 		descs := make(map[string]string)
 		items, _ := os.ReadDir("descs")
 		for _, item := range items {
@@ -354,11 +351,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 		} else {
 			if key, ok := msg.(tea.KeyMsg); ok && key.String() == "enter" {
-				renderer, _ := glamour.NewTermRenderer(glamour.WithStandardStyle("dark"), glamour.WithWordWrap(m.mainPage.description.Width))
 				switch item := m.mySkills.frameworks.SelectedItem().(type) {
 				case *Framework:
-					str, _ := renderer.Render(item.ExpandedDescriptionMD)
-					m.mySkills.expandedDescription.SetContent(str)
+					md, images := parseMarkdownForImages(item.ExpandedDescriptionMD)
+					m.mySkills.expandedDescription.SetContent(parseMarkdownAgainForImages(md, images, lipgloss.NewStyle(), m.mySkills.expandedDescription.Width))
 				}
 			} else {
 				m.mySkills.frameworks, cmd = m.mySkills.frameworks.Update(msg)

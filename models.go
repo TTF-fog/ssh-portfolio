@@ -30,7 +30,7 @@ func (i *Article) Description() string { return i.Desc }
 func (i *Article) FilterValue() string { return i.Name }
 func (*Article) Init() tea.Cmd         { return nil }
 func (i *Article) getFormattedData() string {
-	categoryStyle := lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder()).Foreground(lipgloss.Color("127")).Padding(0, 1)
+	categoryStyle := lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder()).Foreground(lipgloss.AdaptiveColor{Light: "#5F00AF", Dark: "127"}).Padding(0, 1)
 	var drawn_categories string
 	if len(i.Categories) > 0 {
 		drawn_categories = categoryStyle.Render(strings.Join(i.Categories, " | "))
@@ -57,15 +57,15 @@ func (b blogDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	return nil
 }
 func (b blogDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	fn := lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).Foreground(lipgloss.Color("201")).Padding(PADDING).Render
+	fn := lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).Foreground(lipgloss.AdaptiveColor{Light: "#333333", Dark: "201"}).Padding(PADDING).Render
 	switch item := listItem.(type) {
 	case *Article:
 		if index == m.Index() {
 			fn = func(s ...string) string {
 				return lipgloss.NewStyle().Margin(0, PADDING).
 					BorderStyle(lipgloss.NormalBorder()).
-					Foreground(lipgloss.Color("201")).
-					Background(lipgloss.Color("235")).
+					Foreground(lipgloss.AdaptiveColor{Light: "#333333", Dark: "201"}).
+					Background(lipgloss.AdaptiveColor{Light: "#E5E5E5", Dark: "235"}).
 					Render("> " + strings.Join(s, "\n "))
 			}
 		}
@@ -82,13 +82,13 @@ func (d itemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd { return nil }
 func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
 	switch item := listItem.(type) {
 	case *Framework:
-		fn := lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).Foreground(lipgloss.Color("201")).Padding(PADDING).Render
+		fn := lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).Foreground(lipgloss.AdaptiveColor{Light: "#333333", Dark: "201"}).Padding(PADDING).Render
 		if index == m.Index() {
 			fn = func(s ...string) string {
 				return lipgloss.NewStyle().Margin(0, PADDING).
 					BorderStyle(lipgloss.NormalBorder()).
-					Foreground(lipgloss.Color("201")).
-					Background(lipgloss.Color("235")).
+					Foreground(lipgloss.AdaptiveColor{Light: "#333333", Dark: "201"}).
+					Background(lipgloss.AdaptiveColor{Light: "#E5E5E5", Dark: "235"}).
 					Render("> " + strings.Join(s, "\n "))
 			}
 		}
@@ -107,10 +107,10 @@ func (d tabInterface) View() string {
 	var tabView []string
 	for index, tab := range d.tabs {
 		if index == d.idx {
-			tabStyle := lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).Foreground(lipgloss.Color("120")).Padding(0, 1)
+			tabStyle := lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).Foreground(lipgloss.AdaptiveColor{Light: "#008700", Dark: "120"}).Padding(0, 1)
 			tabView = append(tabView, tabStyle.Render(tab))
 		} else {
-			tabStyle := lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).Foreground(lipgloss.Color("240")).Padding(0, 1)
+			tabStyle := lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).Foreground(lipgloss.AdaptiveColor{Light: "#5F5F5F", Dark: "240"}).Padding(0, 1)
 			tabView = append(tabView, tabStyle.Render(tab))
 		}
 	}
