@@ -1,0 +1,62 @@
+name: Build and Sync
+on:
+  push:
+    branches: [ "*" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.24.3
+      - name: Install dependencies
+        run: go get .
+      - name: Build
+        run: go build -o ssh-web
+      - name: Upload Go test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: Build
+          path: ./ssh-web
+      - name: create commit hash file
+        run: |
+          echo ${{github.sha}} >> sha.txt
+          cut "sha.txt" -b 1-10 | tee sha.txt
+          cat sha.txt
+      - name: Stop Service
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
+            systemctl stop --user portfolio
+            echo "Stopped Service"
+      - name: Send New Stuff
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          port: ${{ secrets.PORT }}
+          source: "./ssh-web,blogs,descs,descs_md,images,sha.txt,about_me.md"
+          target: ~/portfolio
+          overwrite: true
+
+      - name: Start Service
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
+            systemctl stop --user portfolio
+            systemctl enable --now --user portfolio
+            echo "Restarted portfolio w!"
