@@ -38,6 +38,7 @@ jobs:
           script: |
             systemctl stop --user portfolio
             echo "Stopped Service"
+          #oog
       - name: Send New Stuff
         uses: appleboy/scp-action@v1
         with:
