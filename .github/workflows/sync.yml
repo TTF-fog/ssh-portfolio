@@ -18,7 +18,7 @@ jobs:
         run: go get .
       - name: Build
         run: go build -o ssh-web
-      - name: Upload Go test results
+      - name: upload latest build
         uses: actions/upload-artifact@v4
         with:
           name: Build
