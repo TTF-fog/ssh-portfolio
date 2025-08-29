@@ -36,9 +36,15 @@ var authToken string
 var logger fileLogger
 var stats UserStats
 var dailyStats dailyUserStats
+var hash []byte
 
 func main() {
 	f, _ := os.OpenFile("log.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	var err error
+	hash, err = os.ReadFile("sha.txt")
+	if err != nil {
+		hash = []byte("Unknown")
+	}
 	logger = fileLogger{
 		file: f,
 		lock: &sync.RWMutex{},
@@ -400,7 +406,7 @@ func (m model) View() string {
 
 	tabs := m.tabs.View()
 	stats := docStyle.Padding(0, 1).Render(fmt.Sprintf("Uptime: %s "+
-		"Visits: %d", time.Since(uptime).Truncate(time.Second).String(), vCount))
+		"Visits: %d, Git Hash: %s", time.Since(uptime).Truncate(time.Second).String(), vCount, hash))
 
 	remainingWidth := m.width - lipgloss.Width(tabs)
 	if remainingWidth < 0 {
