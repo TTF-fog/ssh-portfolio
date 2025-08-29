@@ -43,7 +43,7 @@ func main() {
 	var err error
 	hash, err = os.ReadFile("sha.txt")
 	if err != nil {
-		hash = []byte("Unknown")
+		hash = []byte("3werwegwaq124414")
 	}
 	logger = fileLogger{
 		file: f,
@@ -406,7 +406,7 @@ func (m model) View() string {
 
 	tabs := m.tabs.View()
 	stats := docStyle.Padding(0, 1).Render(fmt.Sprintf("Uptime: %s "+
-		"Visits: %d, Git Hash: %s", time.Since(uptime).Truncate(time.Second).String(), vCount, hash))
+		"Visits: %d "+" Git Hash: %s", time.Since(uptime).Truncate(time.Second).String(), vCount, hash))
 
 	remainingWidth := m.width - lipgloss.Width(tabs)
 	if remainingWidth < 0 {
