@@ -43,7 +43,7 @@ func main() {
 	var err error
 	hash, err = os.ReadFile("sha.txt")
 	if err != nil {
-		hash = []byte("3werwegwaq124414")
+		hash = []byte("Unknown")
 	}
 	logger = fileLogger{
 		file: f,
@@ -257,7 +257,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.contactMe.content.SetHeight(msg.Height / 2)
 
 		if !m.ready {
-			m.mainPage.description.SetContent(parseMarkdownAgainForImages(m.content, m.aboutImages, lipgloss.NewStyle().Padding(1, 1).BorderStyle(lipgloss.NormalBorder()), m.mainPage.description.Width))
+			m.mainPage.description.SetContent("\t Latest Git Hash: " + string(hash) + parseMarkdownAgainForImages(m.content, m.aboutImages, lipgloss.NewStyle().Padding(1, 1).BorderStyle(lipgloss.NormalBorder()), m.mainPage.description.Width))
 			m.mySkills.expandedDescription.SetContent("Try pressing enter :)")
 			m.ready = true
 		}
@@ -405,8 +405,8 @@ func (m model) View() string {
 	}
 
 	tabs := m.tabs.View()
-	stats := docStyle.Padding(0, 0).Render(fmt.Sprintf("Uptime: %s "+
-		"Visits: %d "+" Git Hash: %s", time.Since(uptime).Truncate(time.Second).String(), vCount, hash))
+	stats := docStyle.Padding(0, 1).Render(fmt.Sprintf("Uptime: %s "+
+		"Visits: %d", time.Since(uptime).Truncate(time.Second).String(), vCount))
 
 	remainingWidth := m.width - lipgloss.Width(tabs)
 	if remainingWidth < 0 {
