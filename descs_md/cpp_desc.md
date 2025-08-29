@@ -6,6 +6,7 @@ Why i enjoy it
 
 I primarily use it now for embedded development using the Arduino SDK
 
+
 Projects:
 - [Ideapad Control](https://github.com/TTF-fog/ideapad-control)
   - A linux application meant to switch through different power modes of Ideapad Gaming series laptops through ACPI calls. Configurable through a TOML file

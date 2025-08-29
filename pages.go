@@ -28,13 +28,19 @@ type contactMe struct {
 	content textarea.Model
 }
 
+const (
+	FONT_WIDTH  = 36
+	FONT_HEIGHT = 72
+	N_CHANNELS  = 4
+)
+
 func (c *contactMe) View(TabView string, width int, height int) string {
-	docStyle := lipgloss.NewStyle().Padding(1, 1).BorderStyle(lipgloss.NormalBorder()).Foreground(lipgloss.Color("250"))
+	docStyle := lipgloss.NewStyle().Padding(1, 1).BorderStyle(lipgloss.NormalBorder()).Foreground(lipgloss.AdaptiveColor{Light: "#1A1A1A", Dark: "250"})
 	render := docStyle.Render(lipgloss.JoinVertical(lipgloss.Center, c.name.View(), c.email.View(), c.content.View()))
 	return lipgloss.JoinVertical(lipgloss.Center, TabView, "write me a message here and i'll (probably) get back to you \n press esc to escape and enter to submit, use arrow key to navigate", lipgloss.Place(width, height-40, lipgloss.Center, lipgloss.Center, render))
 }
 func (m *mySkills) View(TabView string, height int) string {
-	docStyle := lipgloss.NewStyle().Padding(1, 1).BorderStyle(lipgloss.NormalBorder()).Foreground(lipgloss.Color("250"))
+	docStyle := lipgloss.NewStyle().Padding(1, 1).BorderStyle(lipgloss.NormalBorder()).Foreground(lipgloss.AdaptiveColor{Light: "#1A1A1A", Dark: "250"})
 	if m.contentFocused {
 		m.expandedDescription.Height = height - 10
 		return lipgloss.JoinVertical(lipgloss.Center, TabView, "press f to unfocus", docStyle.Render(lipgloss.JoinHorizontal(lipgloss.Center, m.expandedDescription.View())))
@@ -53,7 +59,7 @@ type dailyUserStats struct {
 }
 
 func (m *noLifeStats) View(TabView string) string {
-	docStyle := lipgloss.NewStyle().Padding(1, 1).BorderStyle(lipgloss.NormalBorder()).Foreground(lipgloss.Color("250"))
+	docStyle := lipgloss.NewStyle().Padding(1, 1).BorderStyle(lipgloss.NormalBorder()).Foreground(lipgloss.AdaptiveColor{Light: "#1A1A1A", Dark: "250"})
 	var languageStack string
 	sort.Slice(m.allTimeStats.Languages, func(i, j int) bool {
 		return m.allTimeStats.Languages[i].TotalSeconds > m.allTimeStats.Languages[j].TotalSeconds
@@ -119,7 +125,7 @@ type blog struct {
 }
 
 func (b *blog) View(TabView string, height int, width int) string {
-	docStyle := lipgloss.NewStyle().Padding(1, 1).BorderStyle(lipgloss.NormalBorder()).Foreground(lipgloss.Color("250"))
+	docStyle := lipgloss.NewStyle().Padding(1, 1).BorderStyle(lipgloss.NormalBorder()).Foreground(lipgloss.AdaptiveColor{Light: "#1A1A1A", Dark: "250"})
 	if b.contentFocused {
 		return lipgloss.JoinVertical(lipgloss.Center, docStyle.Render(b.expandedDescription.View()))
 	}

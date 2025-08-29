@@ -1,0 +1,9 @@
+body{
+    background: black;
+    color: white;
+    font-family: JetBrains Mono, serif;
+}
+h1{
+    align-content: center;
+    text-align: center;
+}

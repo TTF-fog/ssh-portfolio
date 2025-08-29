@@ -5,6 +5,9 @@ Graphics Design is *NOT* my passion
 I'm a student ~~studying~~ surviving in Grade 10 with an interest in all things embedded and low level
 > "A program is only as good as it is useful"
 - Linus Torvalds
+
+
+
 ```go
 package main
 func main(){

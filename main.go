@@ -9,7 +9,6 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/ssh"
@@ -66,7 +65,6 @@ func main() {
 	if found {
 		host = key
 	}
-
 	uptime = time.Now().Truncate(time.Second)
 	s, err := wish.NewServer(
 		wish.WithAddress(net.JoinHostPort(host, port)),
@@ -132,9 +130,6 @@ func portfolioInit() wish.Middleware {
 			return nil
 		}
 
-		lipgloss.SetHasDarkBackground(true)
-		_ = os.Setenv("COLORTERM", "truecolor")
-		_ = os.Setenv("TERM", "xterm-256color")
 		descs := make(map[string]string)
 		items, _ := os.ReadDir("descs")
 		for _, item := range items {
@@ -181,7 +176,8 @@ func portfolioInit() wish.Middleware {
 		}
 
 		data, _ := os.ReadFile("about_me.md")
-		m.content = string(data)
+
+		m.content, m.aboutImages = parseMarkdownForImages(string(data))
 		m.mySkills.frameworks.SetShowTitle(false)
 		m.blogPage.Blogs.Title = "Blogs"
 		m.mySkills.frameworks.SetShowHelp(true)
@@ -208,6 +204,7 @@ type model struct {
 	contactMe   contactMe
 	noLifeStats noLifeStats
 	blogPage    blog
+	aboutImages []string
 }
 
 type timeMsg time.Time
@@ -254,9 +251,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.contactMe.content.SetHeight(msg.Height / 2)
 
 		if !m.ready {
-			renderer, _ := glamour.NewTermRenderer(glamour.WithStandardStyle("dark"), glamour.WithWordWrap(m.mainPage.description.Width))
-			str, _ := renderer.Render(m.content)
-			m.mainPage.description.SetContent(str)
+			m.mainPage.description.SetContent(parseMarkdownAgainForImages(m.content, m.aboutImages, lipgloss.NewStyle().Padding(1, 1).BorderStyle(lipgloss.NormalBorder()), m.mainPage.description.Width))
 			m.mySkills.expandedDescription.SetContent("Try pressing enter :)")
 			m.ready = true
 		}
@@ -356,11 +351,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 		} else {
 			if key, ok := msg.(tea.KeyMsg); ok && key.String() == "enter" {
-				renderer, _ := glamour.NewTermRenderer(glamour.WithStandardStyle("dark"), glamour.WithWordWrap(m.mainPage.description.Width))
 				switch item := m.mySkills.frameworks.SelectedItem().(type) {
 				case *Framework:
-					str, _ := renderer.Render(item.ExpandedDescriptionMD)
-					m.mySkills.expandedDescription.SetContent(str)
+					md, images := parseMarkdownForImages(item.ExpandedDescriptionMD)
+					m.mySkills.expandedDescription.SetContent(parseMarkdownAgainForImages(md, images, lipgloss.NewStyle(), m.mySkills.expandedDescription.Width))
 				}
 			} else {
 				m.mySkills.frameworks, cmd = m.mySkills.frameworks.Update(msg)
@@ -374,13 +368,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			ey, _ := msg.(tea.KeyMsg)
 			if ey.String() == "enter" {
-				renderer, _ := glamour.NewTermRenderer(glamour.WithStandardStyle("dark"), glamour.WithWordWrap(m.blogPage.expandedDescription.Width))
 
 				switch item := m.blogPage.Blogs.SelectedItem().(type) {
 				case *Article:
-					str, _ := renderer.Render(item.Body)
-
-					m.blogPage.expandedDescription.SetContent(str)
+					m.blogPage.expandedDescription.SetContent(parseMarkdownAgainForImages(item.Body, item.Images, lipgloss.NewStyle().Padding(1, 1), m.blogPage.expandedDescription.Width))
 				}
 			} else {
 				m.blogPage.Blogs, cmd = m.blogPage.Blogs.Update(msg)
@@ -426,7 +417,7 @@ func (m model) View() string {
 		return m.contactMe.View(tabView, m.width, m.height)
 	case "Blog":
 		if m.blogPage.contentFocused {
-			indicator := lipgloss.PlaceHorizontal(m.width, lipgloss.Center, lipgloss.NewStyle().Reverse(true).Render(" Press 'f' to exit fullscreen "))
+			indicator := lipgloss.PlaceHorizontal(m.width, lipgloss.Bottom, lipgloss.NewStyle().Reverse(true).Render(" Press 'f' to exit fullscreen "))
 			return lipgloss.JoinVertical(lipgloss.Left, m.blogPage.expandedDescription.View(), indicator)
 		}
 		return m.blogPage.View(tabView, m.height, m.width)

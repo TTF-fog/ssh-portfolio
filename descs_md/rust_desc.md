@@ -1,5 +1,7 @@
 Rewrite it in Rust!
 ====
+<mdimg  "images/rust_crab.png-80-80" >
+
 ## Why i enjoy it
 - There's a couple of nice features i believe should be in other languages, like constant by default and result/err patterns (TO A CERTAIN  DEGREE) 
 - the borrowing system is fairly intuitive and acts as a good extension to unique pointers in C++

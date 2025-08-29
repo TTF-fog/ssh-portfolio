@@ -6,10 +6,14 @@ import (
 	"fmt"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/progress"
+	"github.com/charmbracelet/glamour"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/ploMP4/chafa-go"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -134,7 +138,7 @@ func loadBlogs() []list.Item {
 		}
 		logger.log(fmt.Sprintf("loading blog: %s", barl[1]))
 
-		//unix_timestamp-name-description
+		//unix_timestamp-name-description-*{categories}
 		dat, err := os.ReadFile(filepath.Join("blogs", name))
 
 		var article Article
@@ -146,7 +150,8 @@ func loadBlogs() []list.Item {
 		article.DatePublished = time.Unix(int64(out), 0)
 		article.Name = barl[1]
 		article.Desc = barl[2][0 : len(barl[2])-3]
-		article.Body = string(dat)
+		article.Body, article.Images = parseMarkdownForImages(string(dat))
+		article.Categories = barl[3:]
 		frameworks = append(frameworks, &article)
 	}
 	sort.Slice(frameworks, func(i, j int) bool {
@@ -154,4 +159,80 @@ func loadBlogs() []list.Item {
 	})
 
 	return frameworks
+}
+
+func getImageString(path string, w int32, h int32, font_width float32, font_height float32) string {
+	pixels, width, height, err := chafa.Load(path)
+	if err != nil {
+		logger.log(err.Error())
+		return ""
+	}
+
+	config := chafa.CanvasConfigNew()
+	defer chafa.CanvasConfigUnref(config)
+
+	chafa.CanvasConfigSetGeometry(config, w, h)
+	chafa.CanvasConfigSetCellGeometry(config, int32(font_width), int32(font_height))
+	config.WorkFactor = 20.00
+	widthNew := config.Width
+	heightNew := config.Height
+
+	chafa.CalcCanvasGeometry(
+		width, height,
+		&widthNew, &heightNew,
+		font_width/font_height,
+		false, false,
+	)
+	chafa.CanvasConfigSetGeometry(config, widthNew, heightNew)
+
+	canvas := chafa.CanvasNew(config)
+	defer chafa.CanvasUnRef(canvas)
+
+	chafa.CanvasDrawAllPixels(
+		canvas,
+		chafa.CHAFA_PIXEL_RGBA8_UNASSOCIATED,
+		pixels,
+		int32(width),
+		int32(height),
+		int32(width)*N_CHANNELS,
+	)
+
+	gs := chafa.CanvasPrint(canvas, nil)
+	return gs.String()
+}
+func parseMarkdownForImages(md string) (string, []string) {
+	re := regexp.MustCompile(`<mdimg\s+"([^"]*)"\s*>`)
+	indexes := re.FindAllStringSubmatchIndex(md, -1)
+	var parsed []string
+	if indexes == nil {
+		return md, []string{}
+	}
+	var newMarkdown strings.Builder
+	var images []string
+
+	prev := 0
+	for IND, index := range indexes {
+		tagstart, tagend := index[0], index[1]
+		contentStart, contentEnd := index[2], index[3]
+		newMarkdown.WriteString(md[prev:tagstart])
+		// file_path-width-height
+		parsed = strings.Split(md[contentStart:contentEnd], "-")
+		width, _ := strconv.Atoi(parsed[1])
+		height, _ := strconv.Atoi(parsed[2])
+		images = append(images, getImageString(parsed[0], int32(width), int32(height), FONT_WIDTH, FONT_HEIGHT))
+		newMarkdown.WriteString(fmt.Sprintf("PLACE%dHOLDER", IND))
+		prev = tagend
+	}
+	newMarkdown.WriteString(md[prev:])
+	return newMarkdown.String(), images
+}
+
+func parseMarkdownAgainForImages(md string, Images []string, imageStyle lipgloss.Style, wrapWidth int) string {
+	renderer, _ := glamour.NewTermRenderer(glamour.WithStandardStyle("dark"), glamour.WithWordWrap(wrapWidth))
+	str, _ := renderer.Render(md)
+	for i, imgData := range Images {
+		placeholder := fmt.Sprintf("PLACE%dHOLDER", i)
+		str = strings.Replace(str, placeholder, imageStyle.Render(imgData), 1)
+	}
+	return str
 }
