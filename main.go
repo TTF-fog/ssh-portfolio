@@ -405,7 +405,7 @@ func (m model) View() string {
 	}
 
 	tabs := m.tabs.View()
-	stats := docStyle.Padding(0, 1).Render(fmt.Sprintf("Uptime: %s "+
+	stats := docStyle.Padding(0, 0).Render(fmt.Sprintf("Uptime: %s "+
 		"Visits: %d "+" Git Hash: %s", time.Since(uptime).Truncate(time.Second).String(), vCount, hash))
 
 	remainingWidth := m.width - lipgloss.Width(tabs)
