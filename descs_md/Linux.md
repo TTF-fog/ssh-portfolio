@@ -14,3 +14,5 @@ Projects (Scripts)-
     Acts as an auto-updater, writing a bumped version to file metadata, and pushing updated version and latest version number to CDN. Client code takes care of checking for updates
   - [CDN](https://github.com/flarialmc/newcdn/blob/main/.github/workflows/dllhash.yml)  
    collected SHA hashes for the latest dll, allowing the launcher to check if the downloaded version was the same. this saved bandwidth for users, by preventing redownloads every launch
+
+Hello from Actions!
