@@ -109,7 +109,8 @@ func (contact *contactMe) Dump() {
 	var data string
 	data = fmt.Sprintf("Contact Name: %s\nContact Email: %s\n Content: %s\n", contact.name.Value(), contact.email.Value(), insertNth(contact.content.Value(), 40))
 	//TODO: unsanitized paths could cause security vuln, fix
-	err := os.WriteFile("messages/message-"+contact.name.Value(), []byte(data), 0644)
+	sanitizedName := sanitizeFilename(contact.name.Value())
+	err := os.WriteFile("messages/message-"+sanitizedName, []byte(data), 0644)
 	if err != nil {
 		panic(err)
 	}

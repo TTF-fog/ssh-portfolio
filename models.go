@@ -39,7 +39,7 @@ func (i *Article) getFormattedData() string {
 
 		return fmt.Sprintf("%s ⏲ %s \n %s \n %s", i.Name, i.DatePublished.String(), i.Desc, drawn_categories)
 	} else {
-		return fmt.Sprintf("%s  ⏲ %s Ago \n %s \n %s", i.Name, time.Since(i.DatePublished).Truncate(time.Second), i.Desc, drawn_categories)
+		return fmt.Sprintf("%s  ⏲ %s Ago \n %s \n %s", i.Name, time.Since(i.DatePublished).Truncate(time.Minute), i.Desc, drawn_categories)
 	}
 
 }
@@ -73,6 +73,11 @@ func (b blogDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		fmt.Fprint(w, fn(str))
 	}
 }
+
+// wefewf/we/f
+// werwef
+//
+//go:nospl2it
 func (d itemDelegate) Height() int { return 6 }
 
 func (d itemDelegate) Spacing() int { return 0 }

@@ -27,7 +27,8 @@ func GetAsyncData(url string, rc chan *http.Response, auth_token string) {
 	client := &http.Client{}
 	data, err := client.Do(req)
 	if err != nil {
-		panic(err)
+		logger.log(err.Error())
+		return
 	}
 	rc <- data //i think thi puts the data into the channeL>?
 }
@@ -102,11 +103,14 @@ func cacheData(stats *UserStats, dailyStats *dailyUserStats) {
 		body, _ := io.ReadAll(responseDaily.Body)
 		err := json.Unmarshal(body, &dailyStats)
 		var temp map[string]map[string]json.RawMessage
-		json.Unmarshal(body, &temp)
-		println(string(temp["data"]["grand_total"]))
-		json.Unmarshal(temp["data"]["grand_total"], &dailyStats)
+		err = json.Unmarshal(body, &temp)
 		if err != nil {
-			panic(err)
+			return
+		}
+		println(string(temp["data"]["grand_total"]))
+		err = json.Unmarshal(temp["data"]["grand_total"], &dailyStats)
+		if err != nil {
+			return
 		}
 	} else {
 		dailyStats.Text = "Failed to Retrieve!"
@@ -126,6 +130,13 @@ func (f *fileLogger) log(s string) {
 	defer f.lock.Unlock()
 	fmt.Fprintln(f.file, s)
 }
+
+func sanitizeFilename(s string) string {
+	// Replace any characters that are not alphanumeric, a hyphen, or an underscore with an empty string.
+	re := regexp.MustCompile(`[^a-zA-Z0-9-_]`)
+	return re.ReplaceAllString(s, "")
+}
+
 func loadBlogs() []list.Item {
 	items, _ := os.ReadDir("blogs")
 	var frameworks []list.Item
