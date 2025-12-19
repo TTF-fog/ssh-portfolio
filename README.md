@@ -1,3 +1,4 @@
+AIzaSyB_HSV0DJ_4EwjPfmL91BJ5JGcsoLdkDw0
 # SSH Portfolio
 I hate web design, and what better way to avoid it and _still_ make a cool portfolio then to use SSH (i'd argue that gives cool points)
 This is a TUI served over SSH using Bubbletea and Wish from Charmbracelet (my goat)
